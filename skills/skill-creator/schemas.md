@@ -198,7 +198,7 @@ Output from the executor agent. Located at `<run-dir>/outputs/metrics.json`.
 
 Wall clock timing for a run. Located at `<run-dir>/timing.json`.
 
-**How to capture:** When a subagent task completes, the task notification includes `total_tokens` and `duration_ms`. Save these immediately — they are not persisted anywhere else and cannot be recovered after the fact.
+**How to capture:** When a subagent task completes, the task notification includes `total_tokens` and `duration_ms`. Save these immediately â they are not persisted anywhere else and cannot be recovered after the fact.
 
 ```json
 {
@@ -278,7 +278,7 @@ Output from Benchmark mode. Located at `benchmarks/<timestamp>/benchmark.json`.
 
   "notes": [
     "Assertion 'Output is a PDF file' passes 100% in both configurations - may not differentiate skill value",
-    "Eval 3 shows high variance (50% ± 40%) - may be flaky or model-dependent",
+    "Eval 3 shows high variance (50% Â± 40%) - may be flaky or model-dependent",
     "Without-skill runs consistently fail on table extraction expectations",
     "Skill adds 13s average execution time but improves pass rate by 50%"
   ]

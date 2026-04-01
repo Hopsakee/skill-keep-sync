@@ -5,7 +5,7 @@
   "license": "MIT",
   "usage_notes": "",
   "tags": [],
-  "active_version": 2
+  "active_version": 1
 }
 ---
 
@@ -39,9 +39,9 @@ If the user mentions this skill without specifying a project, **automatically di
 ### Phase 2: Classify Module Status
 
 For each module, assign a status:
-- 🟢 **Done**: Substantially implemented with real logic
-- 🟡 **Partial/Broken**: Partially implemented, has TODOs, broken imports, or incomplete functions
-- 🔴 **Stub**: Only placeholder code (e.g., `pass`, `foo()`, empty classes)
+- ð¢ **Done**: Substantially implemented with real logic
+- ð¡ **Partial/Broken**: Partially implemented, has TODOs, broken imports, or incomplete functions
+- ð´ **Stub**: Only placeholder code (e.g., `pass`, `foo()`, empty classes)
 
 ### Phase 3: Create the Architecture Diagram
 
@@ -63,7 +63,7 @@ Guidelines:
 - Show module-level boxes, not individual functions (unless a module has a critical broken piece worth highlighting)
 - Label edges with what flows through them (e.g., "parse markdown", "upsert records", "query")
 - Keep it to 5-8 subgraphs maximum for readability
-- Include a legend: `**Legend**: 🟢 Done | 🟡 Partial/Broken | 🔴 Stub/Not Started | 🔵 External`
+- Include a legend: `**Legend**: ð¢ Done | ð¡ Partial/Broken | ð´ Stub/Not Started | ðµ External`
 
 ### Phase 4: Create the Data Model Diagram (if applicable)
 
@@ -161,8 +161,8 @@ This keeps notebooks and markdown files in sync: notebooks are the source of tru
 
 ## Tips
 
-- Always read actual module files before diagramming — never guess from filenames alone
+- Always read actual module files before diagramming â never guess from filenames alone
 - Check for broken imports by looking at `from .module import ...` statements and verifying the referenced modules exist
-- Look for mixed API patterns (e.g., some modules using an ORM, others using raw SQL) — these are common issues worth highlighting
+- Look for mixed API patterns (e.g., some modules using an ORM, others using raw SQL) â these are common issues worth highlighting
 - Check if referenced database tables have corresponding model definitions
 - Note any `TODO`, `FIXME`, or `HACK` comments as issues
