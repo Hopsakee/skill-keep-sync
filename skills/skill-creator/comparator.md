@@ -53,9 +53,9 @@ Based on the task, generate a rubric with two dimensions:
 | Usability | Difficult to use | Usable with effort | Easy to use |
 
 Adapt criteria to the specific task. For example:
-- PDF form â "Field alignment", "Text readability", "Data placement"
-- Document â "Section structure", "Heading hierarchy", "Paragraph flow"
-- Data output â "Schema correctness", "Data types", "Completeness"
+- PDF form Ã¢ÂÂ "Field alignment", "Text readability", "Data placement"
+- Document Ã¢ÂÂ "Section structure", "Heading hierarchy", "Paragraph flow"
+- Data output Ã¢ÂÂ "Schema correctness", "Data types", "Completeness"
 
 ### Step 4: Evaluate Each Output Against the Rubric
 

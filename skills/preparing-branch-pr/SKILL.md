@@ -1,17 +1,12 @@
 ---
 {
-  "title": "Imported Skill",
-  "description": "",
-  "license": "",
+  "title": "preparing-branch-pr",
+  "description": "Stages all changes, generates a detailed PR review document, commits, pushes, and explains how to create the PR on GitHub. Use when asked to prepare a PR, stage and commit for PR, or create a PR review document.",
+  "license": "MIT",
   "usage_notes": "",
   "tags": [],
-  "active_version": 1
+  "active_version": 2
 }
----
-
----
-name: preparing-branch-pr
-description: "Stages all changes, generates a detailed PR review document, commits, pushes, and explains how to create the PR on GitHub. Use when asked to prepare a PR, stage and commit for PR, or create a PR review document."
 ---
 
 # Preparing a Branch for Pull Request

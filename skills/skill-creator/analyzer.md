@@ -240,7 +240,7 @@ Write freeform observations as a list of strings. Each note should:
 
 Examples:
 - "Assertion 'Output is a PDF file' passes 100% in both configurations - may not differentiate skill value"
-- "Eval 3 shows high variance (50% Â± 40%) - run 2 had an unusual failure that may be flaky"
+- "Eval 3 shows high variance (50% ÃÂ± 40%) - run 2 had an unusual failure that may be flaky"
 - "Without-skill runs consistently fail on table extraction expectations (0% pass rate)"
 - "Skill adds 13s average execution time but improves pass rate by 50%"
 - "Token usage is 80% higher with skill, primarily due to script output parsing"
@@ -253,7 +253,7 @@ Save notes to `{output_path}` as a JSON array of strings:
 ```json
 [
   "Assertion 'Output is a PDF file' passes 100% in both configurations - may not differentiate skill value",
-  "Eval 3 shows high variance (50% Â± 40%) - run 2 had an unusual failure",
+  "Eval 3 shows high variance (50% ÃÂ± 40%) - run 2 had an unusual failure",
   "Without-skill runs consistently fail on table extraction expectations",
   "Skill adds 13s average execution time but improves pass rate by 50%"
 ]

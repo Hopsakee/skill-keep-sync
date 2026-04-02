@@ -19,24 +19,24 @@ Compares two versions of a PDF document and produces a structured Markdown repor
 
 If the user has made comments on the old version, inform them:
 
-> "I can see highlights in the PDF but I **cannot** read your text comments or sticky notes directly. To include your comments in the analysis, please **export your annotations to a separate FDF file** (most PDF readers support this via File â Export Comments/Annotations â FDF). Place the FDF file in the same folder and I can parse it."
+> "I can see highlights in the PDF but I **cannot** read your text comments or sticky notes directly. To include your comments in the analysis, please **export your annotations to a separate FDF file** (most PDF readers support this via File Ã¢ÂÂ Export Comments/Annotations Ã¢ÂÂ FDF). Place the FDF file in the same folder and I can parse it."
 
 ## Workflow
 
 ### Step 1: Identify the files
 
 Ask the user to confirm:
-- **Old version PDF** â the earlier/draft document
-- **New version PDF** â the later/final document
-- **Annotations FDF file (optional)** â a separate FDF file exported from the PDF reader containing the user's comments and highlights on the old version. This is NOT the PDF itself; the user must export their annotations to FDF format.
+- **Old version PDF** Ã¢ÂÂ the earlier/draft document
+- **New version PDF** Ã¢ÂÂ the later/final document
+- **Annotations FDF file (optional)** Ã¢ÂÂ a separate FDF file exported from the PDF reader containing the user's comments and highlights on the old version. This is NOT the PDF itself; the user must export their annotations to FDF format.
 
 ### Step 2: Extract PDF content
 
 Use `look_at` to extract the **full text** of both PDFs, page by page. Use these exact parameters:
 
 ```
-objective: "Extract the FULL text content of this PDF, page by page. For each page, label the page number and provide all text exactly as written. Capture headings, subheadings, bullet points, and body text. Be as complete as possible â do not summarize or skip any text."
-context: "This is version [old/new] of a document. I need to compare it word-for-word with another version to identify all differences. Completeness is critical â every paragraph matters."
+objective: "Extract the FULL text content of this PDF, page by page. For each page, label the page number and provide all text exactly as written. Capture headings, subheadings, bullet points, and body text. Be as complete as possible Ã¢ÂÂ do not summarize or skip any text."
+context: "This is version [old/new] of a document. I need to compare it word-for-word with another version to identify all differences. Completeness is critical Ã¢ÂÂ every paragraph matters."
 ```
 
 **Call both `look_at` invocations in parallel** to save time.
@@ -58,7 +58,7 @@ From the FDF output, extract for each annotation:
 
 Filter out:
 - Annotations where `Contents()` is empty and the highlight has no meaningful comment
-- Structural markers like `.h1`, `.h2` â these are formatting hints, not substantive comments
+- Structural markers like `.h1`, `.h2` Ã¢ÂÂ these are formatting hints, not substantive comments
 - Pure positive feedback without actionable content (e.g., just "hulde") can be included but marked as acknowledgements
 
 ### Step 4: Produce the comparison table
@@ -75,14 +75,14 @@ Create a Markdown file with the following structure:
 ```
 
 Categorize changes into these types:
-- **Hernoemd** â title or heading renamed
-- **Nieuw** â content added that didn't exist before
-- **Verwijderd** â content removed entirely
-- **Herschreven** â paragraph(s) substantially rewritten
-- **Toevoeging** â text added within an existing paragraph
-- **Terminologie** â consistent word/term replacement throughout
-- **Correctie** â typo fix or minor wording correction
-- **Structuurwijziging** â reorganization of sections/pages
+- **Hernoemd** Ã¢ÂÂ title or heading renamed
+- **Nieuw** Ã¢ÂÂ content added that didn't exist before
+- **Verwijderd** Ã¢ÂÂ content removed entirely
+- **Herschreven** Ã¢ÂÂ paragraph(s) substantially rewritten
+- **Toevoeging** Ã¢ÂÂ text added within an existing paragraph
+- **Terminologie** Ã¢ÂÂ consistent word/term replacement throughout
+- **Correctie** Ã¢ÂÂ typo fix or minor wording correction
+- **Structuurwijziging** Ã¢ÂÂ reorganization of sections/pages
 
 Organize the table by document section (follow the document's own chapter structure).
 
@@ -108,7 +108,7 @@ Only if an FDF file was provided. Produce **two separate tables** in a second ou
 For each comment that was addressed:
 - Show the original highlighted text and comment
 - Explain **how** and **where** in the final version the issue was resolved
-- Use â prefix and indicate whether fully or partially addressed
+- Use Ã¢ÂÂ prefix and indicate whether fully or partially addressed
 
 #### Table 2: Comments that are NOT addressed and still need attention
 
@@ -122,7 +122,7 @@ For each comment that was addressed:
 For each unaddressed comment:
 - Show the original highlighted text and comment
 - Explain **why** it's still open (passage unchanged, topic not covered, etc.)
-- Use â prefix
+- Use Ã¢ÂÂ prefix
 
 #### Summary counts
 
@@ -133,8 +133,8 @@ End with a summary table:
 
 | Status | Aantal |
 |--------|--------|
-| â Verwerkt (geheel of deels) | **X** |
-| â Niet verwerkt / nog open | **Y** |
+| Ã¢ÂÂ Verwerkt (geheel of deels) | **X** |
+| Ã¢ÂÂ Niet verwerkt / nog open | **Y** |
 ```
 
 Add a brief conclusion noting the overall pattern (e.g., which types of comments were addressed, which themes remain open).
@@ -151,8 +151,8 @@ Save this as `beoordeling_opmerkingen_reviewer.md` in the same folder.
 ## Tips
 
 - Documents in Dutch are common; keep the report in the same language as the documents
-- Page numbers may shift between versions due to added/removed content â compare by section, not by page
-- Watch for terminology changes that are applied consistently throughout (e.g., "strategie" â "uitvoeringskader") â report these once as a document-wide change rather than listing each occurrence
-- Diagrams and visual elements may be described differently by the extraction tool â note when visuals appear to be added or removed but flag uncertainty
+- Page numbers may shift between versions due to added/removed content Ã¢ÂÂ compare by section, not by page
+- Watch for terminology changes that are applied consistently throughout (e.g., "strategie" Ã¢ÂÂ "uitvoeringskader") Ã¢ÂÂ report these once as a document-wide change rather than listing each occurrence
+- Diagrams and visual elements may be described differently by the extraction tool Ã¢ÂÂ note when visuals appear to be added or removed but flag uncertainty
 - When assessing whether a comment is addressed, be strict: a comment is only "addressed" if the specific concern raised by the reviewer is reflected in a change. Tone shifts or unrelated changes in the same section don't count.
 - Some FDF files may use different annotation structures depending on the PDF reader that created them. If `onyxtag` fields are not present, fall back to extracting `Contents(...)` and `QuadPoints` for positioning.
