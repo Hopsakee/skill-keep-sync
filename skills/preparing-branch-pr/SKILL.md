@@ -62,7 +62,7 @@ Group changes into logical categories. Common groupings:
 
 For each change, understand:
 - **What** changed (the code diff)
-- **Why** it changed (the motivation — fix a bug, migrate an API, add a feature)
+- **Why** it changed (the motivation â fix a bug, migrate an API, add a feature)
 - **Impact** (what other code is affected)
 
 ### Phase 3: Write the PR Review Document
@@ -112,14 +112,14 @@ Explain what changed and why.
 
 #### Writing Guidelines
 
-- **Use ample code blocks** — show before/after for every significant change
-- **Explain the "why"** — not just what changed, but the motivation
-- **Group related changes** — don't list every file separately if they share the same change (e.g., "all modules updated import from X to Y")
+- **Use ample code blocks** â show before/after for every significant change
+- **Explain the "why"** â not just what changed, but the motivation
+- **Group related changes** â don't list every file separately if they share the same change (e.g., "all modules updated import from X to Y")
 - **Number the top-level sections** for easy reference during review
-- **Call out renamed functions/APIs** explicitly — reviewers need to know what moved
+- **Call out renamed functions/APIs** explicitly â reviewers need to know what moved
 - **Highlight breaking changes** or behavior differences
 - **Note any remaining TODOs or follow-up work** if applicable
-- **Keep code blocks focused** — show the relevant function/block, not entire files
+- **Keep code blocks focused** â show the relevant function/block, not entire files
 - For trivial/mechanical changes (e.g., auto-generated cell IDs, execution counts in notebooks), summarize rather than listing each one
 
 ### Phase 4: Stage All Changes
@@ -175,10 +175,10 @@ After pushing, provide the user with:
 2. Instructions to paste the contents of `docs_md/pr/<branch-name>.md` as the PR body.
 
 Example output:
-> ✅ All changes staged, committed, and pushed.
+> â All changes staged, committed, and pushed.
 >
 > To create the PR, go to:
-> 👉 **https://github.com/owner/repo/compare/main...branch-name**
+> ð **https://github.com/owner/repo/compare/main...branch-name**
 >
 > Paste the contents of `docs_md/pr/branch-name.md` as the PR description.
 
@@ -186,5 +186,5 @@ Example output:
 
 - If the diff is very large (50+ files), prioritize the most impactful changes and summarize mechanical/generated changes briefly
 - For nbdev projects: notebook diffs are noisy (execution counts, output cells). Focus on the source cell changes, not the metadata
-- For auto-generated files (e.g., `_modidx.py`, compiled outputs), just mention they were regenerated — don't show diffs
+- For auto-generated files (e.g., `_modidx.py`, compiled outputs), just mention they were regenerated â don't show diffs
 - If log files or binary files are in the diff, mention them but don't detail their contents

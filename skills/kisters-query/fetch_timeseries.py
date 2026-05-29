@@ -26,7 +26,7 @@ from kiwis import get_ts_values, kiwis, save_to_csv  # noqa: E402
 
 PARAM_CONFIG: dict[str, dict] = {
     'Q': {
-        'description': 'Discharge / debiet (m³/s)',
+        'description': 'Discharge / debiet (mÂ³/s)',
         'site_type_hints': ['Gemaal', 'MP Debiet', 'Debiet'],
         'station_name_hints': ['Gemaal'],
         'param_name_contains': ['Debiet'],
@@ -42,7 +42,7 @@ PARAM_CONFIG: dict[str, dict] = {
         'ts_preference': ['momentaan.all', 'momentaanall', 'momentaan.v', 'cmd.CS.p', 'mean.1h', 'mean.1d'],
     },
     'V': {
-        'description': 'Volume (m³)',
+        'description': 'Volume (mÂ³)',
         'site_type_hints': ['Gemaal', 'Reservoir', 'Boezem'],
         'station_name_hints': ['Gemaal', 'Volume'],
         'param_name_contains': ['Volume'],
@@ -97,7 +97,7 @@ def _search_sites_by_name(location: str) -> tuple[pd.DataFrame, str]:
     Returns
     -------
     tuple[pd.DataFrame, str]
-        (df_sites, matched_term) — empty DataFrame if nothing found.
+        (df_sites, matched_term) â empty DataFrame if nothing found.
     """
     search_variants = _name_search_variants(location)
     for term in search_variants:
@@ -337,7 +337,7 @@ def find_timeseries(
         )
         if df_ts_all.empty:
             print(
-                f"Warning: no timeseries returned for station '{station_no}' — "
+                f"Warning: no timeseries returned for station '{station_no}' â "
                 "check that station_no is correct (use --discover to verify)."
             )
         elif "ts_shortname" not in df_ts_all.columns:

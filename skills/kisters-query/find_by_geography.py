@@ -106,7 +106,7 @@ def lookup_location(name: str) -> dict:
     """Query Nominatim for a location name and return coordinates and bbox.
 
     Tries the exact name first, then falls back to:
-    - Name without spaces (e.g. 'Meppeler Diep' → 'Meppelerdiep')
+    - Name without spaces (e.g. 'Meppeler Diep' â 'Meppelerdiep')
     - Name with ', Netherlands' appended
 
     Parameters
@@ -187,7 +187,7 @@ def find_sites_in_area(
         )
 
     print(f"Gevonden: {loc['display_name']}")
-    print(f"Centroïde: {loc['lat']:.4f}°N, {loc['lon']:.4f}°E  (OSM type: {loc['osm_class']})")
+    print(f"CentroÃ¯de: {loc['lat']:.4f}Â°N, {loc['lon']:.4f}Â°E  (OSM type: {loc['osm_class']})")
 
     min_lon, min_lat, max_lon, max_lat = loc['bbox']
     width_km, height_km = _bbox_span_km(min_lon, min_lat, max_lon, max_lat)
@@ -195,7 +195,7 @@ def find_sites_in_area(
     if width_km > 0.5 or height_km > 0.5:
         effective_km = radius_km if radius_km is not None else DEFAULT_AREA_BUFFER_KM
         print(
-            f"OSM-feature heeft een oppervlak van {width_km:.1f} km × {height_km:.1f} km — "
+            f"OSM-feature heeft een oppervlak van {width_km:.1f} km Ã {height_km:.1f} km â "
             f"bbox wordt gebruikt met {effective_km:.1f} km buffer."
         )
         lat_buf = effective_km / 111.0
@@ -205,7 +205,7 @@ def find_sites_in_area(
     else:
         effective_km = radius_km if radius_km is not None else DEFAULT_POINT_RADIUS_KM
         print(
-            f"OSM-resultaat is een punt — alle meetpunten binnen {effective_km:.1f} km "
+            f"OSM-resultaat is een punt â alle meetpunten binnen {effective_km:.1f} km "
             f"van {loc['display_name'].split(',')[0]} worden opgehaald."
         )
         query_bbox = _bbox_from_radius(loc['lat'], loc['lon'], effective_km)
@@ -218,7 +218,7 @@ def find_sites_in_area(
         "bbox": bbox_str,
         "returnfields": "station_no,station_name,site_no,site_name,station_latitude,station_longitude",
     }
-    # NOTE: do NOT add parametertype_name here — the server-side filter misses compound
+    # NOTE: do NOT add parametertype_name here â the server-side filter misses compound
     # parameter names like 'Q [m3/s] [NVT] [OW]'. Client-side filtering is done later.
 
     df_stations = kiwis("getStationList", **station_params)
@@ -242,7 +242,7 @@ def find_sites_in_area(
     if not is_area:
         # Point location: KiWIS bbox is square, trim to circle.
         df_stations = df_stations[df_stations['distance_km'] <= effective_km]
-    # For area features: KiWIS bbox already scoped to OSM bbox + buffer — keep all.
+    # For area features: KiWIS bbox already scoped to OSM bbox + buffer â keep all.
 
     if df_stations.empty:
         return pd.DataFrame(), pd.DataFrame(), loc
@@ -305,7 +305,7 @@ def _ts_covers_period(row: pd.Series, from_dt: Optional[str], to_dt: Optional[st
 
 
 def _filter_sites_by_parameter(df_sites: pd.DataFrame, parameter: str) -> pd.DataFrame:
-    """Phase 1 — fast: keep only sites that have the given parameter type.
+    """Phase 1 â fast: keep only sites that have the given parameter type.
 
     Uses getParameterList (one call per site). Handles compound parameter names
     like 'Q [m3/s] [NVT] [OW]' that the server-side filter misses.
@@ -346,7 +346,7 @@ def filter_sites_by_coverage(
     to_dt: Optional[str],
     df_stations: Optional[pd.DataFrame] = None,
 ) -> pd.DataFrame:
-    """Phase 2 — slower: verify actual measurements exist and check date coverage.
+    """Phase 2 â slower: verify actual measurements exist and check date coverage.
 
     Uses getTimeseriesList with coverage per station. Only includes sites whose
     matching timeseries actually contain data (non-empty 'from' field) and whose
@@ -470,7 +470,7 @@ def main() -> None:
             print(f"{len(df_sites)} site(s) hebben parameter '{args.parameter}'.")
 
         # Phase 2: verify actual data exists + optional date coverage check.
-        # Auto-confirm when the user explicitly specified a small radius (≤ 1 km) —
+        # Auto-confirm when the user explicitly specified a small radius (â¤ 1 km) â
         # that already shows intentional precision; no need to ask again.
         auto_confirm = args.confirm or (args.radius is not None and args.radius <= 1.0)
         if len(df_sites) > 25 and not auto_confirm:
@@ -490,7 +490,7 @@ def main() -> None:
         if args.from_dt or args.to_dt:
             parts.append(f"periode {args.from_dt or '...'} t/m {args.to_dt or '...'}")
         print(f"\nFase 2: controleer data beschikbaarheid voor {' en '.join(parts)}...")
-        print("(Kan even duren — per site worden tijdreeksen opgehaald.)\n")
+        print("(Kan even duren â per site worden tijdreeksen opgehaald.)\n")
 
         df_filtered = filter_sites_by_coverage(
             df_sites, args.parameter, args.from_dt, args.to_dt, df_stations=df_stations
