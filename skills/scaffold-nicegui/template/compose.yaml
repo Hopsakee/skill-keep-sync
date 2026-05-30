@@ -1,0 +1,13 @@
+services:
+  {{PROJECT_NAME}}:
+    build: .
+    image: {{PROJECT_NAME}}
+    container_name: {{PROJECT_NAME}}
+    restart: unless-stopped
+    ports:
+      - "{{APP_PORT}}:{{APP_PORT}}"
+    environment:
+      - APP_PORT={{APP_PORT}}
+      # Set a real random value in production:
+      #   STORAGE_SECRET=$(openssl rand -hex 32)
+      - STORAGE_SECRET=${STORAGE_SECRET:?set STORAGE_SECRET in your environment}

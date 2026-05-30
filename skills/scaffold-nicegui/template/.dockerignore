@@ -1,0 +1,11 @@
+.git
+**/.git
+**/.github
+**/.vscode
+**/__pycache__
+**/.env
+**/.venv
+**/.mypy_cache
+**/.pytest_cache
+**/.ruff_cache
+.nicegui/
