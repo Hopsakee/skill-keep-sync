@@ -16,22 +16,22 @@ The script supports two directory layouts:
 
     Workspace layout (from skill-creator iterations):
     <benchmark_dir>/
-    Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ eval-N/
-        Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ with_skill/
-        Ã¢ÂÂ   Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ run-1/grading.json
-        Ã¢ÂÂ   Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ run-2/grading.json
-        Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ without_skill/
-            Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ run-1/grading.json
-            Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ run-2/grading.json
+    ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ eval-N/
+        ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ with_skill/
+        ÃÂ¢ÃÂÃÂ   ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ run-1/grading.json
+        ÃÂ¢ÃÂÃÂ   ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ run-2/grading.json
+        ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ without_skill/
+            ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ run-1/grading.json
+            ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ run-2/grading.json
 
     Legacy layout (with runs/ subdirectory):
     <benchmark_dir>/
-    Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ runs/
-        Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ eval-N/
-            Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ with_skill/
-            Ã¢ÂÂ   Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ run-1/grading.json
-            Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ without_skill/
-                Ã¢ÂÂÃ¢ÂÂÃ¢ÂÂ run-1/grading.json
+    ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ runs/
+        ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ eval-N/
+            ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ with_skill/
+            ÃÂ¢ÃÂÃÂ   ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ run-1/grading.json
+            ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ without_skill/
+                ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ run-1/grading.json
 """
 
 import argparse
@@ -133,7 +133,7 @@ def load_run_results(benchmark_dir: Path) -> dict:
                     "total": grading.get("summary", {}).get("total", 0),
                 }
 
-                # Extract timing Ã¢ÂÂ check grading.json first, then sibling timing.json
+                # Extract timing ÃÂ¢ÃÂÃÂ check grading.json first, then sibling timing.json
                 timing = grading.get("timing", {})
                 result["time_seconds"] = timing.get("total_duration_seconds", 0.0)
                 timing_file = run_dir / "timing.json"
@@ -153,7 +153,7 @@ def load_run_results(benchmark_dir: Path) -> dict:
                     result["tokens"] = metrics.get("output_chars", 0)
                 result["errors"] = metrics.get("errors_encountered", 0)
 
-                # Extract expectations Ã¢ÂÂ viewer requires fields: text, passed, evidence
+                # Extract expectations ÃÂ¢ÃÂÃÂ viewer requires fields: text, passed, evidence
                 raw_expectations = grading.get("expectations", [])
                 for exp in raw_expectations:
                     if "text" not in exp or "passed" not in exp:
@@ -310,17 +310,17 @@ def generate_markdown(benchmark: dict) -> str:
     # Format pass rate
     a_pr = a_summary.get("pass_rate", {})
     b_pr = b_summary.get("pass_rate", {})
-    lines.append(f"| Pass Rate | {a_pr.get('mean', 0)*100:.0f}% ÃÂ± {a_pr.get('stddev', 0)*100:.0f}% | {b_pr.get('mean', 0)*100:.0f}% ÃÂ± {b_pr.get('stddev', 0)*100:.0f}% | {delta.get('pass_rate', 'Ã¢ÂÂ')} |")
+    lines.append(f"| Pass Rate | {a_pr.get('mean', 0)*100:.0f}% ÃÂÃÂ± {a_pr.get('stddev', 0)*100:.0f}% | {b_pr.get('mean', 0)*100:.0f}% ÃÂÃÂ± {b_pr.get('stddev', 0)*100:.0f}% | {delta.get('pass_rate', 'ÃÂ¢ÃÂÃÂ')} |")
 
     # Format time
     a_time = a_summary.get("time_seconds", {})
     b_time = b_summary.get("time_seconds", {})
-    lines.append(f"| Time | {a_time.get('mean', 0):.1f}s ÃÂ± {a_time.get('stddev', 0):.1f}s | {b_time.get('mean', 0):.1f}s ÃÂ± {b_time.get('stddev', 0):.1f}s | {delta.get('time_seconds', 'Ã¢ÂÂ')}s |")
+    lines.append(f"| Time | {a_time.get('mean', 0):.1f}s ÃÂÃÂ± {a_time.get('stddev', 0):.1f}s | {b_time.get('mean', 0):.1f}s ÃÂÃÂ± {b_time.get('stddev', 0):.1f}s | {delta.get('time_seconds', 'ÃÂ¢ÃÂÃÂ')}s |")
 
     # Format tokens
     a_tokens = a_summary.get("tokens", {})
     b_tokens = b_summary.get("tokens", {})
-    lines.append(f"| Tokens | {a_tokens.get('mean', 0):.0f} ÃÂ± {a_tokens.get('stddev', 0):.0f} | {b_tokens.get('mean', 0):.0f} ÃÂ± {b_tokens.get('stddev', 0):.0f} | {delta.get('tokens', 'Ã¢ÂÂ')} |")
+    lines.append(f"| Tokens | {a_tokens.get('mean', 0):.0f} ÃÂÃÂ± {a_tokens.get('stddev', 0):.0f} | {b_tokens.get('mean', 0):.0f} ÃÂÃÂ± {b_tokens.get('stddev', 0):.0f} | {delta.get('tokens', 'ÃÂ¢ÃÂÃÂ')} |")
 
     # Notes section
     if benchmark.get("notes"):
@@ -394,7 +394,7 @@ def main():
         pr = run_summary[config]["pass_rate"]["mean"]
         label = config.replace("_", " ").title()
         print(f"  {label}: {pr*100:.1f}% pass rate")
-    print(f"  Delta:         {delta.get('pass_rate', 'Ã¢ÂÂ')}")
+    print(f"  Delta:         {delta.get('pass_rate', 'ÃÂ¢ÃÂÃÂ')}")
 
 
 if __name__ == "__main__":
