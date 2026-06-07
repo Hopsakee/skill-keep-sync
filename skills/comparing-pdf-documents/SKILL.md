@@ -1,12 +1,8 @@
 ---
-{
-  "title": "comparing-pdf-documents",
-  "description": "Compares two versions of a PDF document (draft vs final) and produces a structured table of differences. Optionally cross-references user annotations (FDF file with comments/highlights) against the final version to show which review comments were addressed and which are still open. Use when asked to compare PDFs, diff documents, check what changed between document versions, or verify if review comments were addressed.",
-  "license": "",
-  "usage_notes": "",
-  "tags": [],
-  "active_version": 1
-}
+name: comparing-pdf-documents
+description: "Compares two versions of a PDF document (draft vs final) and produces a structured table of differences. Optionally cross-references user annotations (FDF file with comments/highlights) against the final version to show which review comments were addressed and which are still open. Use when asked to compare PDFs, diff documents, check what changed between document versions, or verify if review comments were addressed."
+title: comparing-pdf-documents
+active_version: 1
 ---
 
 # Comparing PDF Documents
@@ -19,24 +15,24 @@ Compares two versions of a PDF document and produces a structured Markdown repor
 
 If the user has made comments on the old version, inform them:
 
-> "I can see highlights in the PDF but I **cannot** read your text comments or sticky notes directly. To include your comments in the analysis, please **export your annotations to a separate FDF file** (most PDF readers support this via File ÃÂ¢ÃÂÃÂ Export Comments/Annotations ÃÂ¢ÃÂÃÂ FDF). Place the FDF file in the same folder and I can parse it."
+> "I can see highlights in the PDF but I **cannot** read your text comments or sticky notes directly. To include your comments in the analysis, please **export your annotations to a separate FDF file** (most PDF readers support this via File ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Export Comments/Annotations ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ FDF). Place the FDF file in the same folder and I can parse it."
 
 ## Workflow
 
 ### Step 1: Identify the files
 
 Ask the user to confirm:
-- **Old version PDF** ÃÂ¢ÃÂÃÂ the earlier/draft document
-- **New version PDF** ÃÂ¢ÃÂÃÂ the later/final document
-- **Annotations FDF file (optional)** ÃÂ¢ÃÂÃÂ a separate FDF file exported from the PDF reader containing the user's comments and highlights on the old version. This is NOT the PDF itself; the user must export their annotations to FDF format.
+- **Old version PDF** ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ the earlier/draft document
+- **New version PDF** ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ the later/final document
+- **Annotations FDF file (optional)** ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ a separate FDF file exported from the PDF reader containing the user's comments and highlights on the old version. This is NOT the PDF itself; the user must export their annotations to FDF format.
 
 ### Step 2: Extract PDF content
 
 Use `look_at` to extract the **full text** of both PDFs, page by page. Use these exact parameters:
 
 ```
-objective: "Extract the FULL text content of this PDF, page by page. For each page, label the page number and provide all text exactly as written. Capture headings, subheadings, bullet points, and body text. Be as complete as possible ÃÂ¢ÃÂÃÂ do not summarize or skip any text."
-context: "This is version [old/new] of a document. I need to compare it word-for-word with another version to identify all differences. Completeness is critical ÃÂ¢ÃÂÃÂ every paragraph matters."
+objective: "Extract the FULL text content of this PDF, page by page. For each page, label the page number and provide all text exactly as written. Capture headings, subheadings, bullet points, and body text. Be as complete as possible ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ do not summarize or skip any text."
+context: "This is version [old/new] of a document. I need to compare it word-for-word with another version to identify all differences. Completeness is critical ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ every paragraph matters."
 ```
 
 **Call both `look_at` invocations in parallel** to save time.
@@ -58,7 +54,7 @@ From the FDF output, extract for each annotation:
 
 Filter out:
 - Annotations where `Contents()` is empty and the highlight has no meaningful comment
-- Structural markers like `.h1`, `.h2` ÃÂ¢ÃÂÃÂ these are formatting hints, not substantive comments
+- Structural markers like `.h1`, `.h2` ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ these are formatting hints, not substantive comments
 - Pure positive feedback without actionable content (e.g., just "hulde") can be included but marked as acknowledgements
 
 ### Step 4: Produce the comparison table
@@ -75,14 +71,14 @@ Create a Markdown file with the following structure:
 ```
 
 Categorize changes into these types:
-- **Hernoemd** ÃÂ¢ÃÂÃÂ title or heading renamed
-- **Nieuw** ÃÂ¢ÃÂÃÂ content added that didn't exist before
-- **Verwijderd** ÃÂ¢ÃÂÃÂ content removed entirely
-- **Herschreven** ÃÂ¢ÃÂÃÂ paragraph(s) substantially rewritten
-- **Toevoeging** ÃÂ¢ÃÂÃÂ text added within an existing paragraph
-- **Terminologie** ÃÂ¢ÃÂÃÂ consistent word/term replacement throughout
-- **Correctie** ÃÂ¢ÃÂÃÂ typo fix or minor wording correction
-- **Structuurwijziging** ÃÂ¢ÃÂÃÂ reorganization of sections/pages
+- **Hernoemd** ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ title or heading renamed
+- **Nieuw** ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ content added that didn't exist before
+- **Verwijderd** ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ content removed entirely
+- **Herschreven** ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ paragraph(s) substantially rewritten
+- **Toevoeging** ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ text added within an existing paragraph
+- **Terminologie** ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ consistent word/term replacement throughout
+- **Correctie** ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ typo fix or minor wording correction
+- **Structuurwijziging** ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ reorganization of sections/pages
 
 Organize the table by document section (follow the document's own chapter structure).
 
@@ -108,7 +104,7 @@ Only if an FDF file was provided. Produce **two separate tables** in a second ou
 For each comment that was addressed:
 - Show the original highlighted text and comment
 - Explain **how** and **where** in the final version the issue was resolved
-- Use ÃÂ¢ÃÂÃÂ prefix and indicate whether fully or partially addressed
+- Use ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ prefix and indicate whether fully or partially addressed
 
 #### Table 2: Comments that are NOT addressed and still need attention
 
@@ -122,7 +118,7 @@ For each comment that was addressed:
 For each unaddressed comment:
 - Show the original highlighted text and comment
 - Explain **why** it's still open (passage unchanged, topic not covered, etc.)
-- Use ÃÂ¢ÃÂÃÂ prefix
+- Use ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ prefix
 
 #### Summary counts
 
@@ -133,8 +129,8 @@ End with a summary table:
 
 | Status | Aantal |
 |--------|--------|
-| ÃÂ¢ÃÂÃÂ Verwerkt (geheel of deels) | **X** |
-| ÃÂ¢ÃÂÃÂ Niet verwerkt / nog open | **Y** |
+| ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Verwerkt (geheel of deels) | **X** |
+| ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Niet verwerkt / nog open | **Y** |
 ```
 
 Add a brief conclusion noting the overall pattern (e.g., which types of comments were addressed, which themes remain open).
@@ -151,8 +147,8 @@ Save this as `beoordeling_opmerkingen_reviewer.md` in the same folder.
 ## Tips
 
 - Documents in Dutch are common; keep the report in the same language as the documents
-- Page numbers may shift between versions due to added/removed content ÃÂ¢ÃÂÃÂ compare by section, not by page
-- Watch for terminology changes that are applied consistently throughout (e.g., "strategie" ÃÂ¢ÃÂÃÂ "uitvoeringskader") ÃÂ¢ÃÂÃÂ report these once as a document-wide change rather than listing each occurrence
-- Diagrams and visual elements may be described differently by the extraction tool ÃÂ¢ÃÂÃÂ note when visuals appear to be added or removed but flag uncertainty
+- Page numbers may shift between versions due to added/removed content ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ compare by section, not by page
+- Watch for terminology changes that are applied consistently throughout (e.g., "strategie" ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ "uitvoeringskader") ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ report these once as a document-wide change rather than listing each occurrence
+- Diagrams and visual elements may be described differently by the extraction tool ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ note when visuals appear to be added or removed but flag uncertainty
 - When assessing whether a comment is addressed, be strict: a comment is only "addressed" if the specific concern raised by the reviewer is reflected in a change. Tone shifts or unrelated changes in the same section don't count.
 - Some FDF files may use different annotation structures depending on the PDF reader that created them. If `onyxtag` fields are not present, fall back to extracting `Contents(...)` and `QuadPoints` for positioning.
