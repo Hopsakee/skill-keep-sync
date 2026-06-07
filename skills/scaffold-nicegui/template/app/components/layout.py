@@ -102,7 +102,7 @@ def header() -> None:
 def page_layout(title: str = "") -> Generator[None, None, None]:
     add_head_html()
     if title:
-        ui.page_title(f"{title} — {{PROJECT_TITLE}}")
+        ui.page_title(f"{title} â {{PROJECT_TITLE}}")
     header()
     with ui.column().classes("w-full max-w-6xl mx-auto px-6 py-8 gap-6"):
         yield

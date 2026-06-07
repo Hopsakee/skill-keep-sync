@@ -21,7 +21,7 @@ def load_settings() -> Settings:
         port=int(os.getenv("APP_PORT", "{{APP_PORT}}")),
         dark_mode=os.getenv("DARK_MODE", "true").lower() in ("1", "true", "yes", "on"),
         # Signs the per-user storage cookie. MUST be a real random value in
-        # production — set STORAGE_SECRET in your .env / deployment env, e.g.
+        # production â set STORAGE_SECRET in your .env / deployment env, e.g.
         #   STORAGE_SECRET=$(openssl rand -hex 32)
         storage_secret=os.getenv("STORAGE_SECRET", "change-me-in-production"),
     )
