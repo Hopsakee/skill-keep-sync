@@ -1,6 +1,6 @@
 """Reusable helpers for querying the KiWIS (WISKI) REST API.
 
-Self-contained module â no project-level dependencies.
+Self-contained module Ã¢ÂÂ no project-level dependencies.
 """
 
 from pathlib import Path

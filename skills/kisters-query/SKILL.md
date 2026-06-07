@@ -1,12 +1,9 @@
 ---
-{
-  "title": "kisters-query",
-  "description": "Query the Kisters KiWIS database for sites, stations, parameters, timeseries and measurement values. Use this skill when the user asks about water levels, discharge, measurements, monitoring locations, or any data from the KiWIS/WISKI system. Also use this skill when the user asks about measurements near a geographic location or waterway (e.g. 'alle waterstanden in het Meppelerdiep', 'debiet metingen in een straal van 7 km rondom Zwolle').",
-  "license": "MIT",
-  "usage_notes": "",
-  "tags": [],
-  "active_version": 2
-}
+name: kisters-query
+description: "Query the Kisters KiWIS database for sites, stations, parameters, timeseries and measurement values. Use this skill when the user asks about water levels, discharge, measurements, monitoring locations, or any data from the KiWIS/WISKI system. Also use this skill when the user asks about measurements near a geographic location or waterway (e.g. 'alle waterstanden in het Meppelerdiep', 'debiet metingen in een straal van 7 km rondom Zwolle')."
+title: kisters-query
+license: MIT
+active_version: 1
 ---
 
 # KiWIS Query Skill
@@ -17,14 +14,14 @@
 
 ## Skill structure
 
-This skill is **self-contained** â all scripts and helpers live inside the skill folder and work in any project.
+This skill is **self-contained** Ã¢ÂÂ all scripts and helpers live inside the skill folder and work in any project.
 
 ```text
 .windsurf/workflows/kisters-query/
     scripts/
-        kiwis.py              â KiWIS API helpers (self-contained, no project deps)
-        fetch_timeseries.py   â fetch measurements for a location + parameter
-        find_by_geography.py  â find sites near a geographic location or waterway
+        kiwis.py              Ã¢ÂÂ KiWIS API helpers (self-contained, no project deps)
+        fetch_timeseries.py   Ã¢ÂÂ fetch measurements for a location + parameter
+        find_by_geography.py  Ã¢ÂÂ find sites near a geographic location or waterway
 ```
 
 Install Python dependencies once (any project that uses this skill):
@@ -37,22 +34,22 @@ uv add pandas requests
 
 ## MANDATORY: Discover before fetching
 
-**Always run discovery first** â before fetching any measurements, run `--discover` to see every site, station, and timeseries that matches the location name, including actual data coverage dates (`from` / `to`). Show the output to the user and ask them to confirm (or pick) the correct site/station if the result is ambiguous or has multiple options.
+**Always run discovery first** Ã¢ÂÂ before fetching any measurements, run `--discover` to see every site, station, and timeseries that matches the location name, including actual data coverage dates (`from` / `to`). Show the output to the user and ask them to confirm (or pick) the correct site/station if the result is ambiguous or has multiple options.
 
 Only proceed to fetch data once you know exactly which `ts_id` (preferred) or `site_no` + `station_no` + `ts_shortname` to use.
 
 ```bash
-# Step 1 â discover (always do this first)
+# Step 1 Ã¢ÂÂ discover (always do this first)
 uv run python .windsurf/workflows/kisters-query/scripts/fetch_timeseries.py \
     --location "Katerveer" --parameter H --discover
 
-# Step 2 â fetch using ts_id from discovery (preferred: avoids station resolution errors)
+# Step 2 Ã¢ÂÂ fetch using ts_id from discovery (preferred: avoids station resolution errors)
 uv run python .windsurf/workflows/kisters-query/scripts/fetch_timeseries.py \
     --location "Katerveer" --parameter H \
     --ts-id 1084858042 \
     --from 2024-09-01 --to 2024-10-31
 
-# Step 2 (alternative) â fetch with explicit site/station/shortname
+# Step 2 (alternative) Ã¢ÂÂ fetch with explicit site/station/shortname
 uv run python .windsurf/workflows/kisters-query/scripts/fetch_timeseries.py \
     --location "Katerveer" --parameter H \
     --site-no WDOD_17679 --station-no MPN_WDOD_17679_P010 --ts-shortname mean.1d \
@@ -61,26 +58,26 @@ uv run python .windsurf/workflows/kisters-query/scripts/fetch_timeseries.py \
 
 ### When the location name doesn't match KiWIS site names
 
-`fetch_timeseries.py --discover` searches KiWIS site names with wildcards. If the user's location name doesn't match any KiWIS site name (e.g. "Balgstuw" â the KiWIS site is called "10471S Inlaat Panjerd Veeningen"), use this two-step pipeline:
+`fetch_timeseries.py --discover` searches KiWIS site names with wildcards. If the user's location name doesn't match any KiWIS site name (e.g. "Balgstuw" Ã¢ÂÂ the KiWIS site is called "10471S Inlaat Panjerd Veeningen"), use this two-step pipeline:
 
 ```bash
-# Step 1 â find the site geographically
+# Step 1 Ã¢ÂÂ find the site geographically
 uv run python .windsurf/workflows/kisters-query/scripts/find_by_geography.py \
     --near "Balgstuw" --parameter H --from 2025-12-01 --to 2025-12-31 --confirm
 
-# Step 2 â discover all stations and timeseries at the found site
+# Step 2 Ã¢ÂÂ discover all stations and timeseries at the found site
 uv run python .windsurf/workflows/kisters-query/scripts/fetch_timeseries.py \
     --site-no WRW_7002 --parameter H --discover
 ```
 
-**Always run step 2** after `find_by_geography.py` â a site can have multiple stations (e.g. Hoogwaterzijde and Laagwaterzijde at a weir) and you need to see the full station structure before fetching data.
+**Always run step 2** after `find_by_geography.py` Ã¢ÂÂ a site can have multiple stations (e.g. Hoogwaterzijde and Laagwaterzijde at a weir) and you need to see the full station structure before fetching data.
 
 ---
 
 ## Decision: script or custom code?
 
 **Always check the scripts folder first.**  
-Scripts cover the most common query patterns. Run a script when you can â it handles site discovery, station selection, timeseries resolution, and CSV output automatically.
+Scripts cover the most common query patterns. Run a script when you can Ã¢ÂÂ it handles site discovery, station selection, timeseries resolution, and CSV output automatically.
 
 Only fall back to writing custom code for queries that are genuinely novel and not covered by any existing script. When writing custom code use the skill's own helpers:
 
@@ -104,19 +101,19 @@ Hydraulic structures (stuwen, gemalen, inlaten) often have **multiple stations**
 | **Stuw** | Weir/dam itself |
 | **Klep** | Gate/valve |
 
-When the user asks for measurements at multiple points (e.g. "bovenstrooms Ã©n benedenstrooms"), **always use `--discover` first** to see all stations. Then fetch each timeseries separately using `--ts-id`:
+When the user asks for measurements at multiple points (e.g. "bovenstrooms ÃÂ©n benedenstrooms"), **always use `--discover` first** to see all stations. Then fetch each timeseries separately using `--ts-id`:
 
 ```bash
 # 1. Discover all stations and timeseries at the site
 uv run python .windsurf/workflows/kisters-query/scripts/fetch_timeseries.py \
     --site-no WRW_7002 --parameter H --discover
 
-# 2. Fetch upstream (Hoogwaterzijde) â use ts_id from discovery output
+# 2. Fetch upstream (Hoogwaterzijde) Ã¢ÂÂ use ts_id from discovery output
 uv run python .windsurf/workflows/kisters-query/scripts/fetch_timeseries.py \
     --ts-id 1085802042 --from 2025-12-01 --to 2025-12-31 \
     --output balgstuw_hoogwaterzijde_dec2025.csv
 
-# 3. Fetch downstream (Laagwaterzijde) â use ts_id from discovery output
+# 3. Fetch downstream (Laagwaterzijde) Ã¢ÂÂ use ts_id from discovery output
 uv run python .windsurf/workflows/kisters-query/scripts/fetch_timeseries.py \
     --ts-id 1085822042 --from 2025-12-01 --to 2025-12-31 \
     --output balgstuw_laagwaterzijde_dec2025.csv
@@ -130,7 +127,7 @@ uv run python .windsurf/workflows/kisters-query/scripts/fetch_timeseries.py \
 
 Scripts live in `.windsurf/workflows/kisters-query/scripts/`. Run them with `uv run python <script_path>`.
 
-### `find_by_geography.py` â find all sites near a geographic location or waterway
+### `find_by_geography.py` Ã¢ÂÂ find all sites near a geographic location or waterway
 
 Resolves the location via OpenStreetMap (Nominatim). For waterways and areas (e.g. Meppelerdiep) the OSM bounding box is used; for point locations (e.g. a city) a radius around the centroid is used. Filters by parameter type using a two-phase approach that correctly handles compound parameter names.
 
@@ -152,7 +149,7 @@ uv run python .windsurf/workflows/kisters-query/scripts/find_by_geography.py \
 
 | Argument | Required | Description |
 | --- | --- | --- |
-| `--near` | yes | Location name â waterway, city, area (e.g. `"Meppelerdiep"`, `"Zwolle"`) |
+| `--near` | yes | Location name Ã¢ÂÂ waterway, city, area (e.g. `"Meppelerdiep"`, `"Zwolle"`) |
 | `--radius` | no | Override radius/buffer in km. **Default: 1 km for waterways/areas, 5 km for cities/points.** |
 | `--parameter` | no | Parameter type: `Q`, `H`, `V`, `P`. Omit to return all. |
 | `--from` | no | Only include sites with data from this date `YYYY-MM-DD` |
@@ -170,12 +167,12 @@ uv run python .windsurf/workflows/kisters-query/scripts/find_by_geography.py \
 
 **How it filters when `--parameter` is given (two-phase):**
 
-- **Phase 1 (fast):** `getParameterList` per site â filters sites that have the parameter type. Handles compound names like `Q [m3/s] [NVT] [OW]` that the server-side filter misses. Always runs without a warning, even for large areas.
-- **Phase 2 (slower):** `getTimeseriesList` with `coverage` per station â verifies that the matching timeseries actually contains measurements (excludes empty timeseries). Also checks date overlap if `--from`/`--to` are given. Warns if >25 sites remain after Phase 1 (use `--confirm` to proceed).
+- **Phase 1 (fast):** `getParameterList` per site Ã¢ÂÂ filters sites that have the parameter type. Handles compound names like `Q [m3/s] [NVT] [OW]` that the server-side filter misses. Always runs without a warning, even for large areas.
+- **Phase 2 (slower):** `getTimeseriesList` with `coverage` per station Ã¢ÂÂ verifies that the matching timeseries actually contains measurements (excludes empty timeseries). Also checks date overlap if `--from`/`--to` are given. Warns if >25 sites remain after Phase 1 (use `--confirm` to proceed).
 
 ---
 
-### `fetch_timeseries.py` â fetch measurements for a location + parameter
+### `fetch_timeseries.py` Ã¢ÂÂ fetch measurements for a location + parameter
 
 The workhorse script. Handles site/station discovery, parameter filtering, timeseries resolution selection, and saves results to `data/`.
 
@@ -205,28 +202,28 @@ uv run python .windsurf/workflows/kisters-query/scripts/fetch_timeseries.py \
 | `--to` | no | End date `YYYY-MM-DD` |
 | `--period` | no | ISO 8601 period, e.g. `P30D`, `P1Y` (alternative to `--from`/`--to`) |
 | `--output` | no | CSV filename in `data/` (auto-generated if omitted) |
-| `--discover` | â | List all matching sites/stations/timeseries with coverage dates, then exit. **Run this first.** |
+| `--discover` | Ã¢ÂÂ | List all matching sites/stations/timeseries with coverage dates, then exit. **Run this first.** |
 | `--site-no` | no | Override automatic site selection (use exact `site_no` from discovery) |
 | `--station-no` | no | Override automatic station selection (use exact `station_no` from discovery) |
 | `--ts-shortname` | no | Override timeseries selection by shortname (e.g. `momentaan.all`, `cmd.CS.p`, `mean.1h`, `mean.1d`) |
 | `--resolution` | no | Preferred resolution: `raw` (default), `hourly`, `daily` |
-| `--ts-id` | no | **Skip all resolution** â fetch directly with this `ts_id` from discovery. Prefer this over `--ts-shortname` when the ts_id is known. |
+| `--ts-id` | no | **Skip all resolution** Ã¢ÂÂ fetch directly with this `ts_id` from discovery. Prefer this over `--ts-shortname` when the ts_id is known. |
 
 **How it selects the right site/station (when not overridden):**
 
 - Searches `getSiteList` with a wildcard on the location name; if "gemaal Stroink" yields no match it falls back to "Stroink" automatically.
 - Picks the site whose `site_type_name` best matches the parameter (e.g. "Gemaal" for `Q`).
 - Within that site, picks the station whose name best matches (e.g. "Gemaal" station for `Q`).
-- Default resolution is `raw`: prefers `momentaan.all` â `momentaanall` â `momentaan.v` â `cmd.CS.p` â `mean.1h` â `mean.1d`.
+- Default resolution is `raw`: prefers `momentaan.all` Ã¢ÂÂ `momentaanall` Ã¢ÂÂ `momentaan.v` Ã¢ÂÂ `cmd.CS.p` Ã¢ÂÂ `mean.1h` Ã¢ÂÂ `mean.1d`.
 - Use `--resolution hourly` to prefer `mean.1h`, `--resolution daily` to prefer `mean.1d`.
 
-> **Prefer `--ts-id` over `--ts-shortname`** when you know the exact timeseries from discovery â it bypasses all station resolution and is immune to station_no lookup issues.
+> **Prefer `--ts-id` over `--ts-shortname`** when you know the exact timeseries from discovery Ã¢ÂÂ it bypasses all station resolution and is immune to station_no lookup issues.
 >
 > **Always prefer `--site-no` / `--station-no` / `--ts-shortname` over relying on auto-selection**, especially when discovery reveals multiple matching sites.
 
 ---
 
-## Capture pattern â growing the script library
+## Capture pattern Ã¢ÂÂ growing the script library
 
 After successfully answering a data request, **always ask the user:**
 
@@ -238,7 +235,7 @@ If the answer is yes:
 2. If covered: confirm the script works and note the exact command in a comment or example.
 3. If not covered: create a new script in `.windsurf/workflows/kisters-query/scripts/` following the same pattern as `fetch_timeseries.py`, and add it to the **Available scripts** section above.
 
-This is how the skill grows over time â one confirmed pattern at a time.
+This is how the skill grows over time Ã¢ÂÂ one confirmed pattern at a time.
 
 ---
 
@@ -261,7 +258,7 @@ save_to_csv(df_values, "location_parameter_period.csv")
 ## Data Hierarchy
 
 ```text
-Site  â  Station  â  StationParameter  â  Timeseries  â  TimeseriesValues
+Site  Ã¢ÂÂ  Station  Ã¢ÂÂ  StationParameter  Ã¢ÂÂ  Timeseries  Ã¢ÂÂ  TimeseriesValues
          (physical     (what is            (one          (actual
           location)     measured)           aggregation)   readings)
 ```
@@ -274,7 +271,7 @@ Site  â  Station  â  StationParameter  â  Timeseries  â  Tim
 
 ---
 
-## Step 1 â Fetch Sites (`getSiteList`)
+## Step 1 Ã¢ÂÂ Fetch Sites (`getSiteList`)
 
 Use to discover all monitoring locations. Supports geographic filtering.
 
@@ -291,7 +288,7 @@ df_sites = kiwis(
 
 ---
 
-## Step 2 â Fetch Stations per Site (`getStationList`)
+## Step 2 Ã¢ÂÂ Fetch Stations per Site (`getStationList`)
 
 ```python
 df_stations = kiwis(
@@ -305,7 +302,7 @@ df_stations = kiwis(
 
 ---
 
-## Step 3 â Fetch Parameters per Station (`getParameterList`)
+## Step 3 Ã¢ÂÂ Fetch Parameters per Station (`getParameterList`)
 
 This is the bridge between stations and parameter types. Use to discover what is measured where.
 
@@ -331,7 +328,7 @@ df_ptypes = kiwis("getParameterTypeList")
 
 ---
 
-## Step 4 â Fetch Timeseries (`getTimeseriesList`)
+## Step 4 Ã¢ÂÂ Fetch Timeseries (`getTimeseriesList`)
 
 One StationParameter can have multiple timeseries (daily, monthly, 15-min, etc.).
 
@@ -350,11 +347,11 @@ df_ts = kiwis(
 
 **Filter options:** `ts_id`, `ts_name`, `ts_shortname` (wildcard), `station_no`, `site_no`, `parametertype_name`
 
-> â ï¸ **Server-specific:** on this KiWIS instance, `getTimeseriesList` with `site_no` may return a **500 error**. Always query by `station_no` instead. Also, the `parametertype_name` server-side filter is unreliable â filter client-side or use the scripts.
+> Ã¢ÂÂ Ã¯Â¸Â **Server-specific:** on this KiWIS instance, `getTimeseriesList` with `site_no` may return a **500 error**. Always query by `station_no` instead. Also, the `parametertype_name` server-side filter is unreliable Ã¢ÂÂ filter client-side or use the scripts.
 
 ---
 
-## Step 5 â Fetch Timeseries Values and save to CSV
+## Step 5 Ã¢ÂÂ Fetch Timeseries Values and save to CSV
 
 ```python
 from kiwis import get_ts_values, save_to_csv
@@ -371,7 +368,7 @@ save_to_csv(df_values, "location_discharge_last7d.csv")
 
 ## Common Queries
 
-### Discharge parameters (`Q`, mÂ³/s)
+### Discharge parameters (`Q`, mÃÂ³/s)
 
 Discharge in Dutch water management uses parameter type **`Q`**.
 The server-side `parametertype_name` filter may not match compound names like `Q [m3/s] [NVT] [OW]`,
@@ -459,12 +456,12 @@ print(nearby[["site_no", "site_name", "site_type_name", "distance_km"]])
 | parametertype_name | Meaning |
 |--------------------|---------|
 | `H` | Water level (m NAP / m+ref) |
-| `Q` | Discharge / debiet (mÂ³/s) |
-| `V` | Volume (mÂ³) |
+| `Q` | Discharge / debiet (mÃÂ³/s) |
+| `V` | Volume (mÃÂ³) |
 | `P` | Precipitation (mm) |
-| `AT` | Air temperature (Â°C) |
+| `AT` | Air temperature (ÃÂ°C) |
 | `RH` | Relative humidity (%) |
-| `WDir` | Wind direction (Â°) |
+| `WDir` | Wind direction (ÃÂ°) |
 | `WSpeed` | Wind speed (m/s) |
 | `Power` | Electrical power (kW) |
 | `Work` | Electrical energy (kWh) |
@@ -472,7 +469,7 @@ print(nearby[["site_no", "site_name", "site_type_name", "distance_km"]])
 | `BP` | Barometric pressure |
 | `Generic` | Generic/unspecified |
 
-> The database also has hundreds of WQM chemistry parameters (NO3, NH4, PO4, O2, etc.) with names in format: `substance [unit] [method] [medium]` â e.g. `NO3 [mg/l] [Nnf] [GW]`.
+> The database also has hundreds of WQM chemistry parameters (NO3, NH4, PO4, O2, etc.) with names in format: `substance [unit] [method] [medium]` Ã¢ÂÂ e.g. `NO3 [mg/l] [Nnf] [GW]`.
 
 ---
 
@@ -485,7 +482,7 @@ Als je een `ConnectTimeout` of `Connection timed out` error krijgt bij het verbi
 **Controleer of je Azure VPN Client aanstaat.**
 
 De KiWIS server is alleen bereikbaar via het interne netwerk. Zorg ervoor dat:
-1. De Azure VPN Client is geÃ¯nstalleerd
+1. De Azure VPN Client is geÃÂ¯nstalleerd
 2. De VPN verbinding actief is
 3. Je verbonden bent met het juiste VPN profiel
 
@@ -499,14 +496,14 @@ Max retries exceeded ... Connection to 192.168.168.50 timed out.
 
 ## Tips & Gotchas
 
-- **Zwolle coordinates:** ~52.5168Â°N, 6.0830Â°E â not in the database but can be resolved via Nominatim.
-- **Coordinates can be empty strings** in the JSON â always filter before converting to float.
+- **Zwolle coordinates:** ~52.5168ÃÂ°N, 6.0830ÃÂ°E Ã¢ÂÂ not in the database but can be resolved via Nominatim.
+- **Coordinates can be empty strings** in the JSON Ã¢ÂÂ always filter before converting to float.
 - **`coverage` returnfield** on `getTimeseriesList` adds `from`/`to` fields showing actual data range.
 - **`ts_path`** uniquely identifies a timeseries: `site_no/station_no/stationparameter_no/ts_shortname`
 - **`flatten=true`** on `getStationList` collapses multi-parameter rows into one row per station.
 - **Wildcard `*`** works on fields marked "yes" for wildcard (e.g. `site_name=03*` for all names starting with 03).
 - **Comma-separated lists** work on fields marked "yes" for comma list (e.g. `site_no=WRW_03_02,WRW_03_03`).
 - **`bbox`** uses WGS84 lon/lat by default. Add `crs=local` to use local cartesian coordinates (RD New).
-- **`parametertype_name` server filter** may not match compound names like `Q [m3/s] [NVT] [OW]` â filter client-side with `str.contains` on `stationparameter_name` or `parametertype_unitname` instead.
-- **`getTimeseriesList` + `site_no` â 500 error:** this KiWIS instance does not support `site_no` on `getTimeseriesList`. Always use `station_no` instead (first fetch stations via `getStationList`).
+- **`parametertype_name` server filter** may not match compound names like `Q [m3/s] [NVT] [OW]` Ã¢ÂÂ filter client-side with `str.contains` on `stationparameter_name` or `parametertype_unitname` instead.
+- **`getTimeseriesList` + `site_no` Ã¢ÂÂ 500 error:** this KiWIS instance does not support `site_no` on `getTimeseriesList`. Always use `station_no` instead (first fetch stations via `getStationList`).
 - **Station names at hydraulic structures:** Hoogwaterzijde = upstream (bovenstrooms), Laagwaterzijde = downstream (benedenstrooms), Stuw = weir, Klep = gate.
