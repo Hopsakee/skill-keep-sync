@@ -3,9 +3,9 @@
 Mock at **system boundaries** only:
 
 - External APIs (payment providers, email, maps/weather services, any third-party REST API)
-- External databases — sometimes; prefer a real test DB or in-memory equivalent (sqlite for tests, etc.)
+- External databases â sometimes; prefer a real test DB or in-memory equivalent (sqlite for tests, etc.)
 - Time and randomness (`datetime.now()`, `random`, UUIDs)
-- File system — sometimes; usually `tmp_path` fixture is better
+- File system â sometimes; usually `tmp_path` fixture is better
 - The clock and external schedulers
 
 Don't mock:
@@ -82,6 +82,6 @@ No `Mock` library needed. The fake is a real object that satisfies the protocol.
 
 ## Anti-patterns
 
-- **`mocker.patch("mymodule.helper_function")`** — you're mocking your own code. The test now breaks if you rename `helper_function`, even if behavior is identical.
-- **Mocking the database driver** — usually wrong. Use a real test DB (sqlite-in-memory for unit tests, a docker-compose Postgres for integration).
-- **Asserting `mock.called_with(...)`** on every test — this turns the test into a record of *how* the function works, not *what* it does. Asserting on call shape is sometimes correct (at a true boundary), but it's a smell when overused.
+- **`mocker.patch("mymodule.helper_function")`** â you're mocking your own code. The test now breaks if you rename `helper_function`, even if behavior is identical.
+- **Mocking the database driver** â usually wrong. Use a real test DB (sqlite-in-memory for unit tests, a docker-compose Postgres for integration).
+- **Asserting `mock.called_with(...)`** on every test â this turns the test into a record of *how* the function works, not *what* it does. Asserting on call shape is sometimes correct (at a true boundary), but it's a smell when overused.

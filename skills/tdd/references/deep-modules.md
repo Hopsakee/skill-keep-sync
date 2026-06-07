@@ -5,25 +5,25 @@ From John Ousterhout's *A Philosophy of Software Design*.
 **Deep module** = small interface + lots of implementation
 
 ```
-┌─────────────────────┐
-│   Small Interface   │  ← Few methods, simple params
-├─────────────────────┤
-│                     │
-│                     │
-│  Deep Implementation│  ← Complex logic hidden
-│                     │
-│                     │
-└─────────────────────┘
+âââââââââââââââââââââââ
+â   Small Interface   â  â Few methods, simple params
+âââââââââââââââââââââââ¤
+â                     â
+â                     â
+â  Deep Implementationâ  â Complex logic hidden
+â                     â
+â                     â
+âââââââââââââââââââââââ
 ```
 
 **Shallow module** = large interface + little implementation (avoid)
 
 ```
-┌─────────────────────────────────┐
-│       Large Interface           │  ← Many methods, complex params
-├─────────────────────────────────┤
-│  Thin Implementation            │  ← Just passes through
-└─────────────────────────────────┘
+âââââââââââââââââââââââââââââââââââ
+â       Large Interface           â  â Many methods, complex params
+âââââââââââââââââââââââââââââââââââ¤
+â  Thin Implementation            â  â Just passes through
+âââââââââââââââââââââââââââââââââââ
 ```
 
 ## Why deep modules matter for TDD
@@ -40,13 +40,13 @@ If your tests are fragile, the module is probably too shallow. The fix is usuall
 - Can I simplify the parameters? (Replace many primitives with one well-named object?)
 - Can I hide more complexity inside?
 - Does the caller need to know about this implementation detail, or is it leaking?
-- If I deleted this method, would callers actually miss it — or would I just push the same logic up one level?
+- If I deleted this method, would callers actually miss it â or would I just push the same logic up one level?
 
 ## The "two adapters" rule
 
 > One adapter = a hypothetical seam. Two adapters = a real seam.
 
-A deep module exposing a single adapter is not yet a real abstraction — you're guessing. Wait until a second adapter actually shows up before extracting the seam. This is the same idea as "don't solve things that might never be a problem."
+A deep module exposing a single adapter is not yet a real abstraction â you're guessing. Wait until a second adapter actually shows up before extracting the seam. This is the same idea as "don't solve things that might never be a problem."
 
 ## Concrete example
 
@@ -68,7 +68,7 @@ The caller now knows the full ingest pipeline. Tests must mock all five methods.
 ```python
 class Catalog:
     def ingest(self, document: Document) -> str:
-        # normalize → deduplicate → store → index → emit
+        # normalize â deduplicate â store â index â emit
         # all hidden
 ```
 

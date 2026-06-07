@@ -62,9 +62,9 @@ def test_create_user_makes_user_retrievable():
 
 A test name is a specification. Read aloud, it should describe a capability.
 
-- `test_user_can_checkout_with_valid_cart` — describes capability ✅
-- `test_checkout` — describes the function being tested, not the capability ❌
-- `test_checkout_returns_confirmed_status` — describes return shape, not user-facing meaning ❌
+- `test_user_can_checkout_with_valid_cart` â describes capability â
+- `test_checkout` â describes the function being tested, not the capability â
+- `test_checkout_returns_confirmed_status` â describes return shape, not user-facing meaning â
 
 If you can't write a good name, you probably don't yet understand what behavior you're testing.
 
@@ -85,12 +85,12 @@ What's wrong is bundling multiple unrelated outcomes:
 ```python
 def test_checkout_works():
     # checks success path AND failure path AND validation
-    # → if this fails, you don't know which capability is broken
+    # â if this fails, you don't know which capability is broken
 ```
 
 ## Pytest specifics
 
-- **Fixtures over setUp/tearDown** — pytest fixtures compose better
-- **`parametrize` for multiple inputs to the same behavior** — not for multiple behaviors
+- **Fixtures over setUp/tearDown** â pytest fixtures compose better
+- **`parametrize` for multiple inputs to the same behavior** â not for multiple behaviors
 - **`pytest-asyncio`** for async code; don't mix sync and async in one test
-- **Don't use `unittest.mock.patch` on your own modules** — that's the implementation-coupling smell
+- **Don't use `unittest.mock.patch` on your own modules** â that's the implementation-coupling smell
