@@ -1,12 +1,9 @@
 ---
-{
-  "title": "preparing-branch-pr",
-  "description": "Stages all changes, generates a detailed PR review document, commits, pushes, and explains how to create the PR on GitHub. Use when asked to prepare a PR, stage and commit for PR, or create a PR review document.",
-  "license": "MIT",
-  "usage_notes": "",
-  "tags": [],
-  "active_version": 2
-}
+name: preparing-branch-pr
+description: "Stages all changes, generates a detailed PR review document, commits, pushes, and explains how to create the PR on GitHub. Use when asked to prepare a PR, stage and commit for PR, or create a PR review document."
+title: preparing-branch-pr
+license: MIT
+active_version: 1
 ---
 
 # Preparing a Branch for Pull Request
@@ -62,7 +59,7 @@ Group changes into logical categories. Common groupings:
 
 For each change, understand:
 - **What** changed (the code diff)
-- **Why** it changed (the motivation â fix a bug, migrate an API, add a feature)
+- **Why** it changed (the motivation Ã¢ÂÂ fix a bug, migrate an API, add a feature)
 - **Impact** (what other code is affected)
 
 ### Phase 3: Write the PR Review Document
@@ -112,14 +109,14 @@ Explain what changed and why.
 
 #### Writing Guidelines
 
-- **Use ample code blocks** â show before/after for every significant change
-- **Explain the "why"** â not just what changed, but the motivation
-- **Group related changes** â don't list every file separately if they share the same change (e.g., "all modules updated import from X to Y")
+- **Use ample code blocks** Ã¢ÂÂ show before/after for every significant change
+- **Explain the "why"** Ã¢ÂÂ not just what changed, but the motivation
+- **Group related changes** Ã¢ÂÂ don't list every file separately if they share the same change (e.g., "all modules updated import from X to Y")
 - **Number the top-level sections** for easy reference during review
-- **Call out renamed functions/APIs** explicitly â reviewers need to know what moved
+- **Call out renamed functions/APIs** explicitly Ã¢ÂÂ reviewers need to know what moved
 - **Highlight breaking changes** or behavior differences
 - **Note any remaining TODOs or follow-up work** if applicable
-- **Keep code blocks focused** â show the relevant function/block, not entire files
+- **Keep code blocks focused** Ã¢ÂÂ show the relevant function/block, not entire files
 - For trivial/mechanical changes (e.g., auto-generated cell IDs, execution counts in notebooks), summarize rather than listing each one
 
 ### Phase 4: Stage All Changes
@@ -175,10 +172,10 @@ After pushing, provide the user with:
 2. Instructions to paste the contents of `docs_md/pr/<branch-name>.md` as the PR body.
 
 Example output:
-> â All changes staged, committed, and pushed.
+> Ã¢ÂÂ All changes staged, committed, and pushed.
 >
 > To create the PR, go to:
-> ð **https://github.com/owner/repo/compare/main...branch-name**
+> Ã°ÂÂÂ **https://github.com/owner/repo/compare/main...branch-name**
 >
 > Paste the contents of `docs_md/pr/branch-name.md` as the PR description.
 
@@ -186,5 +183,5 @@ Example output:
 
 - If the diff is very large (50+ files), prioritize the most impactful changes and summarize mechanical/generated changes briefly
 - For nbdev projects: notebook diffs are noisy (execution counts, output cells). Focus on the source cell changes, not the metadata
-- For auto-generated files (e.g., `_modidx.py`, compiled outputs), just mention they were regenerated â don't show diffs
+- For auto-generated files (e.g., `_modidx.py`, compiled outputs), just mention they were regenerated Ã¢ÂÂ don't show diffs
 - If log files or binary files are in the diff, mention them but don't detail their contents
