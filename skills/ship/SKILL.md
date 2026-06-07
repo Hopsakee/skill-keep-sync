@@ -1,6 +1,8 @@
 ---
 name: ship
-description: Git add, commit, and push in one command. USE WHEN ship, commit and push, git ship, push it, send it, commit push, acp.
+description: "Git add, commit, and push in one command. USE WHEN ship, commit and push, git ship, push it, send it, commit push, acp."
+title: ship
+active_version: 1
 ---
 
 # Ship
@@ -44,7 +46,7 @@ From the diff and recent log style:
 git add <specific files from status>
 ```
 
-Do NOT use `git add -A` or `git add .` — list files explicitly to avoid accidentally staging secrets or large binaries. Skip `.env`, `credentials.*`, and similar sensitive files.
+Do NOT use `git add -A` or `git add .` â list files explicitly to avoid accidentally staging secrets or large binaries. Skip `.env`, `credentials.*`, and similar sensitive files.
 
 ```bash
 git commit -m "<commit message>"
@@ -58,4 +60,4 @@ If the branch has no upstream, use `git push -u origin <branch>` instead.
 
 ### 4. Confirm
 
-Report the commit hash and what was pushed. If the commit or push fails, diagnose and report the error — do not retry silently.
+Report the commit hash and what was pushed. If the commit or push fails, diagnose and report the error â do not retry silently.
