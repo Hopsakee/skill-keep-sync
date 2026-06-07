@@ -54,27 +54,27 @@ def package_skill(skill_path, output_dir=None):
 
     # Validate skill folder exists
     if not skill_path.exists():
-        print(f"ÃÂ¢ÃÂÃÂ Error: Skill folder not found: {skill_path}")
+        print(f"ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Error: Skill folder not found: {skill_path}")
         return None
 
     if not skill_path.is_dir():
-        print(f"ÃÂ¢ÃÂÃÂ Error: Path is not a directory: {skill_path}")
+        print(f"ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Error: Path is not a directory: {skill_path}")
         return None
 
     # Validate SKILL.md exists
     skill_md = skill_path / "SKILL.md"
     if not skill_md.exists():
-        print(f"ÃÂ¢ÃÂÃÂ Error: SKILL.md not found in {skill_path}")
+        print(f"ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Error: SKILL.md not found in {skill_path}")
         return None
 
     # Run validation before packaging
-    print("ÃÂ°ÃÂÃÂÃÂ Validating skill...")
+    print("ÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂ Validating skill...")
     valid, message = validate_skill(skill_path)
     if not valid:
-        print(f"ÃÂ¢ÃÂÃÂ Validation failed: {message}")
+        print(f"ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Validation failed: {message}")
         print("   Please fix the validation errors before packaging.")
         return None
-    print(f"ÃÂ¢ÃÂÃÂ {message}\n")
+    print(f"ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ {message}\n")
 
     # Determine output location
     skill_name = skill_path.name
@@ -100,11 +100,11 @@ def package_skill(skill_path, output_dir=None):
                 zipf.write(file_path, arcname)
                 print(f"  Added: {arcname}")
 
-        print(f"\nÃÂ¢ÃÂÃÂ Successfully packaged skill to: {skill_filename}")
+        print(f"\nÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Successfully packaged skill to: {skill_filename}")
         return skill_filename
 
     except Exception as e:
-        print(f"ÃÂ¢ÃÂÃÂ Error creating .skill file: {e}")
+        print(f"ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ Error creating .skill file: {e}")
         return None
 
 
@@ -119,7 +119,7 @@ def main():
     skill_path = sys.argv[1]
     output_dir = sys.argv[2] if len(sys.argv) > 2 else None
 
-    print(f"ÃÂ°ÃÂÃÂÃÂ¦ Packaging skill: {skill_path}")
+    print(f"ÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂ¦ Packaging skill: {skill_path}")
     if output_dir:
         print(f"   Output directory: {output_dir}")
     print()
