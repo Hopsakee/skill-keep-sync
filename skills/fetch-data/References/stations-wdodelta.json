@@ -1,0 +1,14 @@
+{
+  "name": "stations-wdodelta",
+  "description": "Pre-curated WDODelta RWS surface-water stations (ddlpy Naam + Grootheid.Code). Shipped reference DATA the caller points at via `--stations-file References/stations-wdodelta.json` (EXPLICIT path; there is NO privileged bare-name lookup into the skill's own folder — every path is treated identically). NOT hardcoded curation in code. Source: a prior hydrology-fetch script RWS_STATIONS, extended 2026-06-08 with the IJssel / Vecht / Zwarte Water-Meppelerdiep discharge gauges named (Naams discovered from ddlpy.locations() where Grootheid.Code='Q' inside the WDODelta lat/lon box). Pass --rws-box \"52.30,52.85,5.80,6.75\" to disambiguate the Naams (lat_min lowered to 52.30 on 2026-06-08 so Olst at 52.342 is inside the box; the old 52.40 silently excluded it) (the box is a run-level CLI filter, not part of this data file — mirrors the wells file, which holds only the list). Grootheid: WATHTE = water level (cm), Q = discharge (m3/s). Naams containing commas are exactly why a JSON object per station sidesteps the ';'-separated --rws-stations form.",
+  "stations": [
+    {"naam": "Dalfsen, Vechterweerd",          "grootheid": "WATHTE"},
+    {"naam": "IJssel, km 970.0, linker oever",  "grootheid": "WATHTE"},
+    {"naam": "Genemuiden",                       "grootheid": "Q"},
+    {"naam": "Archem, Beneden Regge",            "grootheid": "Q"},
+    {"naam": "Olst",                             "grootheid": "Q"},
+    {"naam": "Kampen",                           "grootheid": "Q"},
+    {"naam": "Ommen, Vecht",                     "grootheid": "Q"},
+    {"naam": "Zwartsluis, Meppelerdiep",         "grootheid": "Q"}
+  ]
+}

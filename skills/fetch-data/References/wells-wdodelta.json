@@ -1,0 +1,17 @@
+{
+  "name": "wells-wdodelta",
+  "description": "Pre-discovered WDODelta groundwater monitoring wells (BRO GMW id + tube). Shipped reference DATA the caller points at via `--wells-file wells-wdodelta`; NOT hardcoded curation in code. Source: a prior hydrology-fetch script GW_WELLS, discovered 2026-06-05 (reused to skip slow per-box GMW enumeration that triggered BRO rate-limiting). location_id is encoded {gmw}-{tube}; Genemuiden's tube is 5, not 1 — do not normalise.",
+  "wells": [
+    {"label": "Zwolle",      "gmw": "GMW000000040772", "tube": 1},
+    {"label": "Kampen",      "gmw": "GMW000000042761", "tube": 1},
+    {"label": "Genemuiden",  "gmw": "GMW000000042886", "tube": 5},
+    {"label": "Meppel",      "gmw": "GMW000000050032", "tube": 1},
+    {"label": "Steenwijk",   "gmw": "GMW000000040722", "tube": 1},
+    {"label": "Staphorst",   "gmw": "GMW000000019250", "tube": 1},
+    {"label": "Dalfsen",     "gmw": "GMW000000004961", "tube": 1},
+    {"label": "Ommen",       "gmw": "GMW000000050354", "tube": 1},
+    {"label": "Dedemsvaart", "gmw": "GMW000000042807", "tube": 1},
+    {"label": "Hardenberg",  "gmw": "GMW000000020530", "tube": 1},
+    {"label": "Hoogeveen",   "gmw": "GMW000000095221", "tube": 1}
+  ]
+}
