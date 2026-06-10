@@ -36,7 +36,12 @@ import plotly.graph_objects as go
 
 from fastlite import Database
 
-SKILL_VERSION = "0.1.0"
+# Per-skill ResampleHelper (VIZ driver: span + budget + min/max/mean envelope). Same-skill sibling
+# import only — NO cross-skill import (ISA Decision 2026-06-09). `uv run --script tell.py` puts this
+# dir on sys.path[0]. The envelope only shapes the CHART; finding values stay read-from-row.
+from resample import read_enveloped, POINT_BUDGET
+
+SKILL_VERSION = "0.2.0"
 
 # Muted two-colour palette (ChartDesign rule 5: colour encodes which series, not decoration).
 COLOR_A = "#4C9BE8"   # primary series accent
@@ -84,15 +89,16 @@ def prettify_var(variable: str) -> str:
 
 
 def read_meta(db: Database) -> dict:
-    """(source, location_id, variable) -> {label, unit}. The display label combines the VARIABLE
-    (the meaningful 'what') with the location_label (the 'where') so the narrative is self-contained
-    — e.g. 'Precipitation (KNMI 278)' rather than the cryptic station code 'KNMI 278 (RH)'."""
+    """(source, location_id, variable) -> {label, unit, native_resolution}. The display label combines
+    the VARIABLE (the meaningful 'what') with the location_label (the 'where') so the narrative is
+    self-contained. native_resolution is the floor the envelope helper must not bucket below."""
     out = {}
-    for r in db.q("SELECT source, location_id, variable, unit, location_label FROM meta"):
+    for r in db.q("SELECT source, location_id, variable, unit, location_label, native_resolution FROM meta"):
         place = r.get("location_label") or r["location_id"]
         out[(r["source"], r["location_id"], r["variable"])] = {
             "label": f"{prettify_var(r['variable'])} — {place}",
             "unit": r.get("unit") or "",
+            "native_resolution": r.get("native_resolution"),
         }
     return out
 
@@ -105,43 +111,34 @@ def split_key(key: str) -> tuple[str, str, str]:
     return (parts[0], ":".join(parts[1:-1]), parts[-1])
 
 
-def read_series(db: Database, key: str) -> tuple[list[str], list[float]]:
-    """Raw non-null observations for one series key, time-ordered. No resampling, no derived values."""
+def series_bounds(db: Database, key: str) -> tuple[str, str] | None:
+    """(min_ts, max_ts) for one series key, or None if it has no non-null rows. Cheap index-only
+    metadata pass — picks the display window, computes nothing about the relationship."""
     source, location_id, variable = split_key(key)
-    rows = db.q(
-        "SELECT timestamp, value FROM data "
-        "WHERE source=? AND location_id=? AND variable=? AND value IS NOT NULL "
-        "ORDER BY timestamp",
+    row = list(db.q(
+        "SELECT MIN(timestamp) AS lo, MAX(timestamp) AS hi FROM data "
+        "WHERE source=? AND location_id=? AND variable=? AND value IS NOT NULL",
         (source, location_id, variable),
-    )
-    ts = [r["timestamp"] for r in rows]
-    vals = [r["value"] for r in rows]
-    return ts, vals
+    ))
+    if not row or row[0]["lo"] is None:
+        return None
+    return row[0]["lo"], row[0]["hi"]
 
 
 def series_meta(meta: dict, key: str) -> dict:
-    return meta.get(split_key(key), {"label": key, "unit": ""})
+    return meta.get(split_key(key), {"label": key, "unit": "", "native_resolution": None})
 
 
-def overlap_window(ts_a: list[str], ts_b: list[str]) -> tuple[str, str] | None:
-    """Intersection of two ISO-string time ranges (string compare is correct for ISO-8601). View
+def overlap_window(b_a: tuple[str, str] | None, b_b: tuple[str, str] | None) -> tuple[str, str] | None:
+    """Intersection of two ISO-string [min,max] ranges (string compare is correct for ISO-8601). View
     windowing only — picks display bounds, computes nothing about the relationship."""
-    if not ts_a or not ts_b:
+    if not b_a or not b_b:
         return None
-    lo = max(ts_a[0], ts_b[0])
-    hi = min(ts_a[-1], ts_b[-1])
+    lo = max(b_a[0], b_b[0])
+    hi = min(b_a[1], b_b[1])
     if lo > hi:
         return None
     return lo, hi
-
-
-def clip(ts: list[str], vals: list[float], lo: str, hi: str) -> tuple[list[str], list[float]]:
-    out_t, out_v = [], []
-    for t, v in zip(ts, vals):
-        if lo <= t <= hi:
-            out_t.append(t)
-            out_v.append(v)
-    return out_t, out_v
 
 
 # ---------------------------------------------------------------- narrative (deterministic)
@@ -228,23 +225,55 @@ def narrative_lines(f: dict, ma: dict, mb: dict, renderable: bool) -> list[str]:
 
 
 # ---------------------------------------------------------------- chart (Plotly, high-signal)
+def _band_alpha(hex_color: str, alpha: float) -> str:
+    """#RRGGBB -> rgba(r,g,b,alpha) for a faint min/max band fill in the series' own accent."""
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
+
+
+def _add_series(fig: go.Figure, rows: list[dict], color: str, label: str, yaxis: str) -> None:
+    """Add one series as a min/max BAND (lo..hi, faint fill) + a MEAN line. The band edges are
+    drawn width-0 so only the fill reads; the mean is the line the eye follows. fill='tonexty' fills
+    between the hi trace and the immediately-preceding lo trace on the SAME yaxis — so lo then hi must
+    be added consecutively. Markers only when sparse (ChartDesign rule 2 / chart_lint hardcoded_markers)."""
+    if not rows:
+        return
+    xs = [r["t"] for r in rows]                 # DB ISO strings (never pandas Timestamp)
+    lo = [r["lo"] for r in rows]
+    hi = [r["hi"] for r in rows]
+    mean = [r["mean"] for r in rows]
+    band_mode = "lines"
+    mean_mode = "lines+markers" if len(rows) <= MARKER_MAX_POINTS else "lines"
+    # lo edge (invisible), then hi edge filling down to it -> the min/max band.
+    # connectgaps=False: a bucket with no data is a missing row, and the line/band MUST break there
+    # rather than bridge a flat segment across the hole — bridging would paint continuous data where
+    # there is none (fabrication-by-rendering; the REAL-DATA-OR-NO-DATA principle). Buckets are dense
+    # within a series' coverage, so this only breaks the line at genuine coverage gaps.
+    fig.add_trace(go.Scatter(x=xs, y=lo, mode=band_mode, name=f"{label} min",
+                             line=dict(color=color, width=0), hoverinfo="skip",
+                             connectgaps=False, yaxis=yaxis))
+    fig.add_trace(go.Scatter(x=xs, y=hi, mode=band_mode, name=f"{label} max",
+                             line=dict(color=color, width=0), fill="tonexty",
+                             fillcolor=_band_alpha(color, 0.15), hoverinfo="skip",
+                             connectgaps=False, yaxis=yaxis))
+    fig.add_trace(go.Scatter(x=xs, y=mean, mode=mean_mode, name=label,
+                             line=dict(color=color, width=1.6),
+                             connectgaps=False, yaxis=yaxis))
+
+
 def build_figure(f: dict, ma: dict, mb: dict,
-                 ta: list[str], va: list[float],
-                 tb: list[str], vb: list[float]) -> go.Figure:
-    """One high-signal figure for a finding. Title + axis-units + one story annotation + direct
-    end-labels + legend disabled, per References/ChartDesign.md. Computes no statistic; r/lag in the
-    title come from the finding row."""
+                 rows_a: list[dict], rows_b: list[dict]) -> go.Figure:
+    """One high-signal figure for a finding: per series a mean LINE + a min/max BAND (envelope from
+    the viz ResampleHelper). Title + axis-units + one story annotation + direct end-labels + legend
+    disabled, per References/ChartDesign.md. Computes no statistic; r/lag in the title come verbatim
+    from the finding row, and the band's MAX preserves any peak the downsampling would otherwise hide."""
     same_unit = ma["unit"] == mb["unit"] and ma["unit"] != ""
+    yaxis_b = "y" if same_unit else "y2"
     fig = go.Figure()
 
-    mode_a = "lines+markers" if len(ta) <= MARKER_MAX_POINTS else "lines"
-    mode_b = "lines+markers" if len(tb) <= MARKER_MAX_POINTS else "lines"
-
-    fig.add_trace(go.Scatter(x=ta, y=va, mode=mode_a, name=ma["label"],
-                             line=dict(color=COLOR_A, width=1.6)))
-    fig.add_trace(go.Scatter(x=tb, y=vb, mode=mode_b, name=mb["label"],
-                             line=dict(color=COLOR_B, width=1.6),
-                             yaxis=("y" if same_unit else "y2")))
+    _add_series(fig, rows_a, COLOR_A, ma["label"], "y")
+    _add_series(fig, rows_b, COLOR_B, mb["label"], yaxis_b)
 
     y1_title = ma["unit"] if same_unit else f"{ma['label']} ({ma['unit']})"
     # Secondary y-axis only when the two series carry different units. Toggled by value, not by a
@@ -267,20 +296,21 @@ def build_figure(f: dict, ma: dict, mb: dict,
         yaxis2=y2_cfg,
     )
 
-    # Direct end-labels (ChartDesign rule 1: label each series, not a legend).
-    if ta:
-        fig.add_annotation(x=ta[-1], y=va[-1], text=ma["label"], showarrow=False,
+    # Direct end-labels (ChartDesign rule 1: label each series, not a legend) — at the mean's end.
+    if rows_a:
+        fig.add_annotation(x=rows_a[-1]["t"], y=rows_a[-1]["mean"], text=ma["label"], showarrow=False,
                            xanchor="left", font=dict(color=COLOR_A, size=11), xshift=6)
-    if tb:
-        fig.add_annotation(x=tb[-1], y=vb[-1], text=mb["label"], showarrow=False,
+    if rows_b:
+        fig.add_annotation(x=rows_b[-1]["t"], y=rows_b[-1]["mean"], text=mb["label"], showarrow=False,
                            xanchor="left", font=dict(color=COLOR_B, size=11), xshift=6,
                            yref=("y" if same_unit else "y2"))
 
-    # One story annotation (ChartDesign rule 7): mark the peak of the primary series in view.
-    # Pure extremum lookup for annotation placement — not a statistic about the relationship.
-    if va:
-        peak_i = max(range(len(va)), key=lambda i: va[i])
-        fig.add_annotation(x=ta[peak_i], y=va[peak_i],
+    # One story annotation (ChartDesign rule 7): mark the peak of the primary series in view, taken
+    # from the band's MAX so the true extremum survives downsampling. Extremum lookup for annotation
+    # placement only — not a statistic about the relationship.
+    if rows_a:
+        peak_i = max(range(len(rows_a)), key=lambda i: rows_a[i]["hi"])
+        fig.add_annotation(x=rows_a[peak_i]["t"], y=rows_a[peak_i]["hi"],
                            text=f"peak {ma['label']}", showarrow=True, arrowhead=2,
                            font=dict(size=11), bgcolor="rgba(255,255,255,0.7)")
     return fig
@@ -418,25 +448,36 @@ def main(argv=None):
 
     meta = read_meta(db)
 
-    # Attach a figure (or mark unrenderable) to each finding. Reads `data`; computes no statistic.
+    # Attach a figure (or mark unrenderable) to each finding. Reads `data` via the viz envelope
+    # helper (bucket+min/max/mean, downsampled in SQL); computes no statistic. The store is read-only.
+    from datetime import datetime
     rendered = 0
     for f in findings:
         f["_fig"] = None
         f["_renderable"] = False
         if len(f["columns"]) < 2:
             continue
-        ta, va = read_series(db, f["columns"][0])
-        tb, vb = read_series(db, f["columns"][1])
-        win = overlap_window(ta, tb)
+        ba = series_bounds(db, f["columns"][0])
+        bb = series_bounds(db, f["columns"][1])
+        win = overlap_window(ba, bb)
         if win is None:
             continue  # series absent or non-overlapping -> narrated honestly, no chart
-        ca_t, ca_v = clip(ta, va, *win)
-        cb_t, cb_v = clip(tb, vb, *win)
-        if not ca_t or not cb_t:
-            continue
         ma = series_meta(meta, f["columns"][0])
         mb = series_meta(meta, f["columns"][1])
-        f["_fig"] = build_figure(f, ma, mb, ca_t, ca_v, cb_t, cb_v)
+        sa, la, va_ = split_key(f["columns"][0])
+        sb, lb, vb_ = split_key(f["columns"][1])
+        try:
+            span_days = max((datetime.fromisoformat(win[1]) - datetime.fromisoformat(win[0]))
+                            .total_seconds() / 86400.0, 0.0)
+        except ValueError:
+            span_days = None
+        rows_a, _ga = read_enveloped(db.conn, sa, la, va_, ma.get("native_resolution"),
+                                     POINT_BUDGET, window=win, span_days=span_days)
+        rows_b, _gb = read_enveloped(db.conn, sb, lb, vb_, mb.get("native_resolution"),
+                                     POINT_BUDGET, window=win, span_days=span_days)
+        if not rows_a or not rows_b:
+            continue
+        f["_fig"] = build_figure(f, ma, mb, rows_a, rows_b)
         f["_renderable"] = True
         rendered += 1
 

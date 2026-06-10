@@ -93,7 +93,19 @@ these rules; a Claude-as-judge `Interceptor` screenshot is the experiential gate
   differ byte-for-byte.
 - **Charts use the overlapping time window of the two series.** A finding whose series barely overlap
   (e.g. a 30-year daily series vs a 3-month sub-daily one) is clipped to the intersection so the chart
-  is readable. This is view windowing, not resampling — no values are derived.
+  is readable.
+- **Charts downsample via the viz envelope (`scripts/resample.py`), and that's a CHART change only.**
+  `read_enveloped` buckets each series to a min/max/mean envelope in SQL so a 726k-point series never
+  reaches the browser (the story HTML stays ~KB, not multi-MB). This shapes the *picture*; it never
+  touches a finding value — r/lag/n are still read verbatim from the row (keep it that way). The
+  envelope is the SAME viz driver the dashboard uses, carried as a per-skill duplicate (no cross-skill
+  import) per the adaptive-resolution ISA decision.
+- **An honest envelope needs BOTH peaks and gaps, not just peaks.** The min/max band preserves a peak
+  the mean would hide — but a `GROUP BY` only emits rows for buckets that HAVE data, so a connected
+  line will *bridge* empty buckets and paint continuity across a real coverage gap (fabrication-by-
+  rendering). Every envelope trace sets `connectgaps=False` so holes render as breaks. Preserving
+  extremes without preserving gaps still lies, just in the other direction — the Advisor caught this
+  on the StoryInherit build.
 - **Absent / non-overlapping series is a feature, not a crash.** A finding whose series aren't both in
   `data`, or don't overlap in time, is narrated honestly (its caveats explain why) with no chart.
 - **Zero findings → run `AnalyseData` first.** An empty `findings` table prints a friendly message
@@ -107,4 +119,4 @@ these rules; a Claude-as-judge `Interceptor` screenshot is the experiential gate
 - Stage 1 (fetch + the empty `findings` table): `~/.claude/skills/FetchData/`.
 - Stage 2 (fills `findings` with caveated correlations): `~/.claude/skills/AnalyseData/`.
 - findings schema (locked): `~/.claude/skills/FetchData/scripts/store.py` (`_SCHEMA`).
-- Chart rules (reused): `References/ChartDesign.md` + `scripts/chart_lint.py`.
+- Chart rules (reused, the project): `References/ChartDesign.md` + `scripts/chart_lint.py`.
