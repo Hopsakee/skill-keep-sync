@@ -5,7 +5,6 @@
 #     "nicegui>=2.0",
 #     "plotly>=5.20",
 #     "fastlite",
-#     "pandas>=2.0",
 # ]
 # ///
 """dashboard.py — TellDataDashboard: a live dashboard to BROWSE a finished SQLite PACKAGE.
@@ -24,27 +23,35 @@ Reads the three-table package and serves a reactive NiceGUI dashboard with ONE P
   • Reeksen    — the full `meta` provenance table (every series).
   • Bevindingen— the `findings` rows rendered FAITHFULLY (r, lag, n, caveats VERBATIM, .6g).
 
-The package stores RAW, heterogeneous-resolution data; each series is DISPLAY-resampled to a chosen
-period by MEAN (surfaced; empty buckets stay missing, connectgaps=False; no fill). Storage is never
-touched (read-only). DOMAIN-AGNOSTIC: metric=variable, entity=location, labels/units from `meta`.
+ADAPTIVE RESOLUTION (ISA 20260609 — VIZ driver). The package stores RAW, native-resolution data.
+The dashboard never ships raw points to the browser: zoom IS the resolution selector. Each visible
+series is read via `resample.read_enveloped`, which picks a bucket grain from the visible span
+against a ~2500-point budget (floored at the series' native_resolution) and aggregates IN SQL into a
+min/max/mean envelope. At full zoom (raw count under budget) raw points are returned untouched so
+peaks are never hidden. Storage is never written. DOMAIN-AGNOSTIC: metric=variable, entity=location.
 
 Usage:
     uv run --script dashboard.py --db package.db            # serve on :8080
     uv run --script dashboard.py --db package.db --inspect  # print detected shape, exit
     uv run --script dashboard.py --db package.db --check     # build UI+figures headless, exit 0
-    uv run --script dashboard.py --db package.db --port 8099 --period W
+    uv run --script dashboard.py --db package.db --port 8099
 """
 from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
 import sys
+from datetime import datetime
 from pathlib import Path
 
-import pandas as pd
 from fastlite import Database
 
-SKILL_VERSION = "0.3.0"
+# Per-skill ResampleHelper (sibling import within THIS skill — NOT a cross-skill import).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import resample  # noqa: E402  (choose_grain / read_enveloped / POINT_BUDGET — the VIZ driver)
+
+SKILL_VERSION = "0.4.0"
 
 PALETTE = [
     "#38bdf8", "#f97316", "#a78bfa", "#34d399", "#f472b6", "#facc15",
@@ -55,9 +62,7 @@ MUTED_GRID = "rgba(148,163,184,0.12)"
 MARKER_MAX_POINTS = 40
 TABLE_ROW_CAP = 5000
 MAX_PARAMS = 2                                   # dual y-axis ceiling
-
-PERIOD_RULES = {"D": "D", "W": "W", "MS": "MS"}
-PERIOD_LABELS = {"D": "Dag", "W": "Week", "MS": "Maand"}
+WINDOW_STEPS = 1000                              # slider granularity over the time axis (zoom)
 
 
 def prettify_var(variable: str) -> str:
@@ -81,9 +86,36 @@ def param_codes(variables) -> dict:
     return codes
 
 
-# ── package read (fastlite, read-only by behaviour) ──────────────────────────
+def _rgba(hex_color: str, alpha: float) -> str:
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
+
+
+def _parse_iso(s: str) -> datetime | None:
+    """Tolerant ISO-8601 parse -> naive datetime (tz stripped) for span arithmetic only."""
+    if not s:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(s).replace(" ", "T"))
+    except ValueError:
+        try:
+            dt = datetime.fromisoformat(str(s)[:19])
+        except ValueError:
+            return None
+    return dt.replace(tzinfo=None)
+
+
+# ── package read ──────────────────────────────────────────────────────────────
 def open_db(path: str) -> Database:
+    """fastlite handle for the small meta/findings reads."""
     return Database(str(Path(path).expanduser()))
+
+
+def open_conn(path: str) -> sqlite3.Connection:
+    """Read-only DBAPI connection for the envelope series reads (resample.read_enveloped)."""
+    uri = f"file:{Path(path).expanduser()}?mode=ro"
+    return sqlite3.connect(uri, uri=True, check_same_thread=False)
 
 
 def _safe_json(raw, default):
@@ -106,33 +138,15 @@ def read_meta_rows(db: Database) -> list[dict]:
     return out
 
 
-def read_series_raw(db: Database, source: str, location_id: str, variable: str):
-    rows = db.q(
-        "SELECT timestamp, value FROM data "
-        "WHERE source=? AND location_id=? AND variable=? AND value IS NOT NULL "
-        "ORDER BY timestamp",
-        (source, location_id, variable),
-    )
-    return [r["timestamp"] for r in rows], [r["value"] for r in rows]
-
-
-def overall_span_days(db: Database) -> int:
-    row = list(db.q("SELECT MIN(timestamp) AS lo, MAX(timestamp) AS hi FROM data"))
-    if not row or not row[0].get("lo") or not row[0].get("hi"):
-        return 0
-    lo = pd.to_datetime(row[0]["lo"], errors="coerce", utc=True)
-    hi = pd.to_datetime(row[0]["hi"], errors="coerce", utc=True)
-    if pd.isna(lo) or pd.isna(hi):
-        return 0
-    return int((hi - lo).days)
-
-
-def auto_period(span_days: int) -> str:
-    if span_days <= 366 * 2:
-        return "D"
-    if span_days <= 366 * 13:
-        return "W"
-    return "MS"
+def overall_span(conn: sqlite3.Connection):
+    """(min_iso, max_iso, span_days) over the whole `data` table — read-only."""
+    row = conn.execute("SELECT MIN(timestamp), MAX(timestamp) FROM data").fetchone()
+    if not row or not row[0] or not row[1]:
+        return None, None, 0
+    lo, hi = row[0], row[1]
+    lo_dt, hi_dt = _parse_iso(lo), _parse_iso(hi)
+    days = int((hi_dt - lo_dt).total_seconds() / 86400.0) if (lo_dt and hi_dt) else 0
+    return lo, hi, max(days, 0)
 
 
 def read_findings(db: Database) -> list[dict]:
@@ -197,7 +211,7 @@ def finding_subline(f: dict) -> str:
     return " · ".join(bits)
 
 
-# ── transforms ───────────────────────────────────────────────────────────────
+# ── transforms (within-series; applied to the per-bucket mean) ────────────────
 def yoy(values):
     out = [None]
     for i in range(1, len(values)):
@@ -217,146 +231,137 @@ def apply_mode(values, mode):
     return yoy(values) if mode == "change" else (rebase(values) if mode == "rebase" else values)
 
 
-# ── adapter: package -> shared display grid ──────────────────────────────────
-def resample_one(ts_iso: list[str], vals: list[float], rule: str) -> "pd.Series":
-    if not ts_iso:
-        return pd.Series(dtype="float64")
-    idx = pd.to_datetime(ts_iso, errors="coerce", utc=True)
-    s = pd.Series(vals, index=idx)
-    s = s[~s.index.isna()]
-    if s.empty:
-        return pd.Series(dtype="float64")
-    return s.resample(rule).mean()
-
-
-def build_panel(raw_by_key: dict, meta_rows: list[dict], rule: str):
-    resampled = {}
-    period_set = set()
-    for m in meta_rows:
-        key = (m["source"], m["location_id"], m["variable"])
-        ts, vals = raw_by_key.get(key, ([], []))
-        rr = resample_one(ts, vals, rule)
-        if rr.empty:
-            continue
-        resampled[key] = rr
-        period_set.update(rr.index.tolist())
-
-    ts_sorted = sorted(period_set)
-    times = [t.strftime("%Y-%m-%d") for t in ts_sorted]
-    tindex = {t: i for i, t in enumerate(ts_sorted)}
-
-    variables = sorted({m["variable"] for m in meta_rows})
-    places = sorted({m["place"] for m in meta_rows})
-    metric_labels, units = {}, {}
-    for m in meta_rows:
-        units.setdefault(m["variable"], m.get("unit") or "")
-        unit = units[m["variable"]]
-        metric_labels[m["variable"]] = f"{m['label_var']}" + (f" ({unit})" if unit else "")
-
-    series = {v: {p: [None] * len(times) for p in places} for v in variables}
-    place_by_key = {(m["source"], m["location_id"], m["variable"]): m["place"] for m in meta_rows}
-    for key, rr in resampled.items():
-        var, place = key[2], place_by_key.get(key)
-        if place is None:
-            continue
-        for t, val in rr.items():
-            i = tindex.get(t)
-            if i is not None:
-                series[var][place][i] = None if pd.isna(val) else float(val)
-
-    return times, places, variables, series, metric_labels, units
-
-
 # ── presentation layer (NiceGUI, one tab per table) ──────────────────────────
-def build_dashboard(db_path: Path, port: int, period_override: str | None = None,
-                    check_only: bool = False):
+def build_dashboard(db_path: Path, port: int, check_only: bool = False):
     import plotly.graph_objects as go
     from nicegui import ui
 
     db = open_db(str(db_path))
+    conn = open_conn(str(db_path))
     meta_rows = read_meta_rows(db)
     if not meta_rows:
         raise ValueError(f"no `meta` rows in {db_path.name} — is this a pipeline package?")
 
-    raw_by_key = {}
-    for m in meta_rows:
-        key = (m["source"], m["location_id"], m["variable"])
-        raw_by_key[key] = read_series_raw(db, *key)
-
     findings = read_findings(db)
     flabels = findings_label_map(meta_rows)
-    span = overall_span_days(db)
-    init_period = period_override if period_override in PERIOD_RULES else auto_period(span)
+    min_iso, max_iso, span = overall_span(conn)
+    min_dt, max_dt = _parse_iso(min_iso), _parse_iso(max_iso)
 
-    # which parameters each place measures (period-independent — from meta)
+    # series lookups (meta only — cheap; no data read just to set up)
+    variables = sorted({m["variable"] for m in meta_rows})
+    places = sorted({m["place"] for m in meta_rows})
     place_params: dict[str, set] = {}
+    metric_labels, units, native_by_key, key_for, place_rowcount = {}, {}, {}, {}, {}
     for m in meta_rows:
+        k = (m["source"], m["location_id"], m["variable"])
+        native_by_key[k] = m.get("native_resolution")
+        key_for.setdefault((m["variable"], m["place"]), k)
         place_params.setdefault(m["place"], set()).add(m["variable"])
+        units.setdefault(m["variable"], m.get("unit") or "")
+        unit = units[m["variable"]]
+        metric_labels[m["variable"]] = f"{m['label_var']}" + (f" ({unit})" if unit else "")
+        place_rowcount[(m["variable"], m["place"])] = int(m.get("row_count") or 0)
 
-    state = {"period": init_period}
+    colors = {p: PALETTE[i % len(PALETTE)] for i, p in enumerate(places)}
+    pcodes = param_codes(variables)
 
-    def rebuild():
-        times, places, variables, series, mlabels, units = build_panel(
-            raw_by_key, meta_rows, PERIOD_RULES[state["period"]])
-        keep_params = [v for v in state.get("sel_params", []) if v in variables][:MAX_PARAMS]
+    def rowcount_of_param(v):
+        return sum(c for (var, _p), c in place_rowcount.items() if var == v)
 
-        def covered(param):
-            col = series.get(param, {})
-            return [p for p in places if any(v is not None for v in col.get(p, []))]
-        default_param = max(variables, key=lambda v: len(covered(v))) if variables else None
-        sel_params = keep_params or ([default_param] if default_param else [])
+    default_param = max(variables, key=rowcount_of_param) if variables else None
 
-        # locations restricted to those measuring a selected parameter
-        valid = [p for p in places if place_params.get(p, set()) & set(sel_params)] if sel_params else places
-        keep_locs = [p for p in state.get("sel_locations", []) if p in valid]
-        sel_locs = keep_locs or valid[: min(4, len(valid))]
+    def locs_for(params):
+        ps = set(params or [])
+        return [p for p in places if (place_params.get(p, set()) & ps)] if ps else list(places)
 
-        state.update({
-            "times": times, "places": places, "variables": variables, "series": series,
-            "metric_labels": mlabels, "units": units,
-            "colors": {p: PALETTE[i % len(PALETTE)] for i, p in enumerate(places)},
-            "param_codes": param_codes(variables),
-            "place_params": place_params,
-            "sel_params": sel_params,
-            "sel_locations": sel_locs,
-            "mode": state.get("mode", "level"),
-            "range": (0, max(0, len(times) - 1)),
-        })
+    def default_locs(params):
+        cand = locs_for(params)
+        cand = sorted(cand, key=lambda p: -max((place_rowcount.get((v, p), 0) for v in params),
+                                               default=0))
+        return cand[: min(4, len(cand))]
 
-    rebuild()
+    init_params = [default_param] if default_param else []
+    state = {
+        "win": (min_iso, max_iso),            # current visible window (ISO bounds; None,None if empty)
+        "sel_params": init_params,
+        "sel_locations": default_locs(init_params),
+        "mode": "level",
+        "_env": {},                           # memo: (key, win) -> (rows, grain)
+    }
+
+    def iso_at(frac: float) -> str | None:
+        if min_dt is None or max_dt is None:
+            return None
+        dt = min_dt + (max_dt - min_dt) * max(0.0, min(1.0, frac))
+        return dt.strftime("%Y-%m-%dT%H:%M:%S")
+
+    def read_one(param, loc):
+        """Envelope read for one (param, location) over the current window. Memoised per window so
+        the chart and the table don't double-read. NEVER returns more than POINT_BUDGET points."""
+        k = key_for.get((param, loc))
+        if not k:
+            return [], None
+        win = state["win"]
+        cache_key = (k, win)
+        if cache_key in state["_env"]:
+            return state["_env"][cache_key]
+        window = win if (win and win[0] and win[1]) else None
+        span_days = None
+        if window:
+            a, b = _parse_iso(window[0]), _parse_iso(window[1])
+            if a and b:
+                span_days = max((b - a).total_seconds() / 86400.0, 0.0)
+        rows, grain = resample.read_enveloped(conn, k[0], k[1], k[2], native_by_key.get(k),
+                                              window=window, span_days=span_days)
+        state["_env"][cache_key] = (rows, grain)
+        return rows, grain
 
     def label_of(param):
-        return state["metric_labels"].get(param, str(param))
+        return metric_labels.get(param, str(param))
 
     def data_figure():
-        """One chart for the selected parameter(s). 1 param -> single left y-axis. 2 params ->
-        param 1 on the left y-axis (solid), param 2 on the right y-axis (dashed). Colour = location
-        (consistent); conditional markers; direct end-labels; connectgaps=False; units on the axes."""
+        """One chart for the selected parameter(s). Each series = a min/max envelope BAND (level
+        mode) + a mean LINE on top. 1 param -> single left y-axis; 2 params -> param 1 left (solid),
+        param 2 right (dashed). Colour = location. x-values are ISO strings straight from SQL — never
+        pandas Timestamp (banked NiceGUI serialization gotcha)."""
         fig = go.Figure()
-        times, (lo, hi) = state["times"], state["range"]
-        xs = times[lo:hi + 1]
         params = state["sel_params"][:MAX_PARAMS]
-        mode = "lines+markers" if len(xs) <= MARKER_MAX_POINTS else "lines"
+        show_band = state["mode"] == "level"
+        grains: list[str] = []
         drew = False
         for pi, param in enumerate(params):
             yaxis = "y" if pi == 0 else "y2"
             dash = "solid" if pi == 0 else "dash"
-            code = state["param_codes"].get(param, "")
+            code = pcodes.get(param, "")
             for loc in state["sel_locations"]:
-                if loc not in state["series"].get(param, {}):
+                rows, grain = read_one(param, loc)
+                if not rows:
                     continue
-                vals = apply_mode(state["series"][param][loc], state["mode"])[lo:hi + 1]
-                if all(v is None for v in vals):
+                xs = [r["t"] for r in rows]                     # ISO strings (ISC-11)
+                means = apply_mode([r["mean"] for r in rows], state["mode"])
+                if all(v is None for v in means):
                     continue
                 drew = True
-                col = state["colors"][loc]
-                fig.add_trace(go.Scatter(x=xs, y=vals, mode=mode, name=loc, yaxis=yaxis,
+                if grain:
+                    grains.append(f"{label_of(param)}: {grain} ({len(rows)} pt)")
+                col = colors[loc]
+                mode = "lines+markers" if len(xs) <= MARKER_MAX_POINTS else "lines"
+                if show_band:
+                    his = [r["hi"] for r in rows]
+                    los = [r["lo"] for r in rows]
+                    fig.add_trace(go.Scatter(x=xs, y=his, mode="lines", line=dict(width=0),
+                                             yaxis=yaxis, showlegend=False, hoverinfo="skip"))
+                    fig.add_trace(go.Scatter(x=xs, y=los, mode="lines", line=dict(width=0),
+                                             fill="tonexty", fillcolor=_rgba(col, 0.16),
+                                             yaxis=yaxis, showlegend=False, hoverinfo="skip",
+                                             name=f"{loc} (min–max)"))
+                fig.add_trace(go.Scatter(x=xs, y=means, mode=mode, name=loc, yaxis=yaxis,
                                          line=dict(color=col, width=2, dash=dash),
                                          connectgaps=False, showlegend=False))
-                last = next((k for k in range(len(vals) - 1, -1, -1) if vals[k] is not None), None)
+                last = next((k for k in range(len(means) - 1, -1, -1) if means[k] is not None), None)
                 if last is not None:
                     tag = f"  {loc}" + (f" ({code})" if len(params) > 1 else "")
-                    fig.add_annotation(x=xs[last], y=vals[last], xanchor="left", showarrow=False,
+                    fig.add_annotation(x=xs[last], y=means[last], xanchor="left", showarrow=False,
                                        text=tag, font=dict(color=col, size=11),
                                        yref=("y" if pi == 0 else "y2"))
         ylabel = {"level": (label_of(params[0]) if params else "Waarde"),
@@ -366,7 +371,7 @@ def build_dashboard(db_path: Path, port: int, period_override: str | None = None
         title = "  vs  ".join(label_of(p) for p in params) if params else "Geen parameter"
         fig.update_layout(template="plotly_dark", height=470, margin=dict(l=10, r=150, t=46, b=10),
                           title=dict(text=title, font=dict(size=14)), showlegend=False,
-                          xaxis=dict(title=f"Periode ({PERIOD_LABELS[state['period']]})",
+                          xaxis=dict(title="Periode (automatisch raster — zoom = resolutie)",
                                      showgrid=False, zeroline=False),
                           yaxis=dict(title=ylabel, showgrid=True, gridcolor=MUTED_GRID, zeroline=False),
                           yaxis2=dict(title=y2title, overlaying="y", side="right",
@@ -374,37 +379,44 @@ def build_dashboard(db_path: Path, port: int, period_override: str | None = None
                           paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         if state["mode"] == "change":
             fig.add_hline(y=0, line_dash="dot", line_color="#64748b")
-        return fig, drew
+        return fig, drew, grains
 
     def selection_rows():
-        rows, (lo, hi) = [], state["range"]
+        rows = []
         for param in state["sel_params"]:
+            plabel = label_of(param)
             for loc in state["sel_locations"]:
-                col = state["series"].get(param, {}).get(loc)
-                if not col:
-                    continue
-                for i in range(lo, hi + 1):
-                    v = col[i]
-                    if v is None:
+                env, _grain = read_one(param, loc)
+                for r in env:
+                    if r["mean"] is None:
                         continue
-                    rows.append({"periode": state["times"][i], "meetpunt": loc,
-                                 "parameter": label_of(param), "waarde": round(v, 6)})
+                    rows.append({"periode": r["t"], "meetpunt": loc, "parameter": plabel,
+                                 "gemiddelde": round(r["mean"], 6),
+                                 "min": None if r["lo"] is None else round(r["lo"], 6),
+                                 "max": None if r["hi"] is None else round(r["hi"], 6)})
                     if len(rows) > TABLE_ROW_CAP:
                         return rows[:TABLE_ROW_CAP], True
         return rows, False
 
     if check_only:
-        _ = data_figure()
-        _ = selection_rows()
+        fig, drew, grains = data_figure()
+        srows, _ = selection_rows()
         _ = [finding_title(f, flabels) for f in findings if f["columns"]]
-        print(f"check OK — {len(meta_rows)} series, {len(state['places'])} locations × "
-              f"{len(state['times'])} periods ({PERIOD_LABELS[state['period']]}), "
-              f"{len(state['variables'])} variables, {len(findings)} findings")
+        # ISC-33 guard: no selected series exceeds the point budget on the full-span window.
+        worst = max((len(read_one(p, l)[0]) for p in state["sel_params"]
+                     for l in state["sel_locations"]), default=0)
+        assert worst <= resample.POINT_BUDGET, f"point budget breached: {worst}"
+        print(f"check OK — {len(meta_rows)} series, {len(places)} locations, "
+              f"{len(variables)} variables, {len(findings)} findings; "
+              f"span {span}d; max points/series {worst} ≤ {resample.POINT_BUDGET}; "
+              f"grains {grains or '—'}; table rows {len(srows)}")
         return
 
     def window_text():
-        times, (lo, hi) = state["times"], state["range"]
-        return f"{times[lo]} – {times[hi]}" if times else "—"
+        lo, hi = state["win"]
+        if not lo or not hi:
+            return "—"
+        return f"{str(lo)[:16]} – {str(hi)[:16]}"
 
     @ui.page("/")
     def page():
@@ -412,9 +424,9 @@ def build_dashboard(db_path: Path, port: int, period_override: str | None = None
         ui.add_css("body{background:#0f172a;color:#e2e8f0}")
         with ui.column().classes("w-full max-w-6xl mx-auto p-4 gap-2"):
             ui.label(f"📦 {db_path.stem}").classes("text-2xl font-bold")
-            ui.label(f"{len(meta_rows)} reeksen · {len(state['places'])} meetpunten · "
-                     f"{len(state['variables'])} parameters · {len(findings)} bevindingen · "
-                     f"raster {PERIOD_LABELS[state['period']]} (display-resample, gemiddelde)") \
+            ui.label(f"{len(meta_rows)} reeksen · {len(places)} meetpunten · "
+                     f"{len(variables)} parameters · {len(findings)} bevindingen · "
+                     f"adaptief raster (envelope, ≤{resample.POINT_BUDGET} pt/reeks)") \
                 .classes("text-sm text-slate-400")
 
             with ui.tabs().classes("w-full") as tabs:
@@ -423,7 +435,9 @@ def build_dashboard(db_path: Path, port: int, period_override: str | None = None
                 ui.tab("findings", "💡 Bevindingen")
             with ui.tab_panels(tabs, value="data").classes("w-full"):
                 with ui.tab_panel("data"):
-                    build_data_tab(ui, data_figure, selection_rows, window_text, state, rebuild)
+                    build_data_tab(ui, data_figure, selection_rows, window_text, state,
+                                   variables, places, place_params, pcodes, metric_labels,
+                                   locs_for, default_locs, iso_at)
                 with ui.tab_panel("meta"):
                     build_meta_tab(ui, meta_rows)
                 with ui.tab_panel("findings"):
@@ -433,47 +447,44 @@ def build_dashboard(db_path: Path, port: int, period_override: str | None = None
            storage_secret="tell-data-dashboard")
 
 
-def build_data_tab(ui, data_figure, selection_rows, window_text, state, rebuild):
-    codes = state["param_codes"]
-    place_params = state["place_params"]
-
+def build_data_tab(ui, data_figure, selection_rows, window_text, state,
+                   variables, places, place_params, codes, metric_labels,
+                   locs_for, default_locs, iso_at):
     def loc_label(place):
         cs = sorted(codes[v] for v in place_params.get(place, ()))
         return (f"[{'·'.join(cs)}] " if cs else "") + place
 
     def loc_options(sel_params):
-        ps = set(sel_params or [])
-        locs = [p for p in state["places"] if (place_params.get(p, set()) & ps)] if ps else list(state["places"])
-        return {p: loc_label(p) for p in locs}
+        return {p: loc_label(p) for p in locs_for(sel_params)}
 
     with ui.column().classes("w-full gap-3"):
         with ui.row().classes("w-full gap-4 items-center flex-wrap"):
-            param_sel = ui.select(state["metric_labels"], value=state["sel_params"], multiple=True,
+            param_sel = ui.select(metric_labels, value=state["sel_params"], multiple=True,
                                   label="Parameters (max 2)").props("use-chips").classes("min-w-72")
             loc_sel = ui.select(loc_options(state["sel_params"]), value=state["sel_locations"],
                                 multiple=True, label="Meetpunten (één of meer)") \
                 .props("use-chips").classes("min-w-72")
 
-        # legend mapping the per-point codes to full parameter names
-        ui.label("Codes: " + "  ·  ".join(f"{codes[v]} = {state['metric_labels'].get(v, v)}"
-                                          for v in state["variables"])).classes("text-xs text-slate-500")
+        ui.label("Codes: " + "  ·  ".join(f"{codes[v]} = {metric_labels.get(v, v)}"
+                                          for v in variables)).classes("text-xs text-slate-500")
 
         def refresh_locs():
             opts = loc_options(state["sel_params"])
             loc_sel.options = opts
-            state["sel_locations"] = [l for l in state["sel_locations"] if l in opts] or list(opts)[:4]
+            state["sel_locations"] = [l for l in state["sel_locations"] if l in opts] \
+                or default_locs(state["sel_params"])
             loc_sel.value = state["sel_locations"]
             loc_sel.update()
 
         def on_params(e):
             vals = list(e.value or [])
-            if len(vals) > 2:                       # enforce the dual-axis ceiling
+            if len(vals) > 2:
                 vals = vals[:2]
                 param_sel.value = vals
                 param_sel.update()
                 ui.notify("Maximaal 2 parameters tegelijk (links + rechts y-as).", type="warning")
             state.update(sel_params=vals)
-            refresh_locs()                          # only points that measure a selected parameter
+            refresh_locs()
             charts.refresh()
             table.refresh()
         param_sel.on_value_change(on_params)
@@ -487,31 +498,32 @@ def build_data_tab(ui, data_figure, selection_rows, window_text, state, rebuild)
         with ui.row().classes("w-full gap-4 items-center flex-wrap"):
             ui.toggle({"level": "Niveau", "change": "YoY %", "rebase": "Index=100"}, value=state["mode"],
                       on_change=lambda e: (state.update(mode=e.value), charts.refresh()))
-            ui.select(PERIOD_LABELS, value=state["period"], label="Tijdraster",
-                      on_change=lambda e: (state.update(period=e.value), rebuild(), refresh_locs(),
-                                           period_row.refresh(), charts.refresh(), table.refresh())) \
-                .classes("min-w-32")
 
         @ui.refreshable
         def period_row():
-            with ui.column().classes("min-w-80"):
-                rlabel = ui.label(f"Periode: {window_text()}")
-                n = max(0, len(state["times"]) - 1)
-                lo0, hi0 = state["range"]
-                # `label` (not label-always): the date tooltips show only on hover/drag of a handle.
-                rng = ui.range(min=0, max=n, value={"min": lo0, "max": hi0}).props("label")
+            with ui.column().classes("min-w-96 w-full"):
+                rlabel = ui.label(f"Venster: {window_text()}").classes("text-sm")
+                ui.label("Sleep om in/uit te zoomen — het raster (week/dag/uur/15-min) volgt het "
+                         "zichtbare venster automatisch.").classes("text-xs text-slate-500")
+                rng = ui.range(min=0, max=WINDOW_STEPS,
+                               value={"min": 0, "max": WINDOW_STEPS}).props("label").classes("w-full")
+                # initial tooltips (state["win"] is already the full span at startup)
+                _lo0, _hi0 = state["win"]
+                rng.props(f'left-label-value="{str(_lo0)[:16]}" right-label-value="{str(_hi0)[:16]}"')
 
-                def set_tips():
-                    t = state["times"]
-                    lo, hi = state["range"]
-                    if t:
-                        rng.props(f'left-label-value="{t[lo]}" right-label-value="{t[hi]}"')
-                        rng.update()
-                set_tips()
-                rng.on("update:model-value", lambda e: (
-                    state.update(range=(int(rng.value["min"]), int(rng.value["max"]))),
-                    rlabel.set_text(f"Periode: {window_text()}"),
-                    set_tips(), charts.refresh(), table.refresh()))
+                def on_win(_e=None):
+                    lo = iso_at(rng.value["min"] / WINDOW_STEPS)
+                    hi = iso_at(rng.value["max"] / WINDOW_STEPS)
+                    if lo and hi and lo > hi:
+                        lo, hi = hi, lo
+                    state["win"] = (lo, hi)
+                    state["_env"] = {}                    # window changed -> drop the envelope memo
+                    rlabel.set_text(f"Venster: {window_text()}")
+                    rng.props(f'left-label-value="{str(lo)[:16]}" right-label-value="{str(hi)[:16]}"')
+                    rng.update()
+                    charts.refresh()
+                    table.refresh()
+                rng.on("update:model-value", on_win)
         period_row()
 
         @ui.refreshable
@@ -519,12 +531,17 @@ def build_data_tab(ui, data_figure, selection_rows, window_text, state, rebuild)
             if not state["sel_locations"] or not state["sel_params"]:
                 ui.label("Selecteer ten minste één meetpunt én één parameter.").classes("text-slate-400")
                 return
-            fig, drew = data_figure()
+            fig, drew, grains = data_figure()
             if drew:
                 ui.plotly(fig).classes("w-full")
+                if grains:
+                    ui.label("Raster (auto): " + "  ·  ".join(grains)).classes("text-xs text-slate-500")
             else:
                 with ui.card().classes("w-full bg-slate-800"):
                     ui.label("Geen data voor deze selectie in dit venster.").classes("text-slate-400 text-sm")
+            if state["mode"] == "level":
+                ui.label("Lijn = gemiddelde per bin · band = min–max binnen die bin (pieken blijven "
+                         "zichtbaar).").classes("text-xs text-slate-500")
             if len(state["sel_params"]) > 1:
                 ui.label("Doorgetrokken lijn + linker y-as = parameter 1 · streepjeslijn + rechter "
                          "y-as = parameter 2 · kleur = meetpunt.").classes("text-xs text-slate-500")
@@ -540,7 +557,9 @@ def build_data_tab(ui, data_figure, selection_rows, window_text, state, rebuild)
                 {"name": "periode", "label": "Periode", "field": "periode", "sortable": True, "align": "left"},
                 {"name": "meetpunt", "label": "Meetpunt", "field": "meetpunt", "sortable": True, "align": "left"},
                 {"name": "parameter", "label": "Parameter", "field": "parameter", "sortable": True, "align": "left"},
-                {"name": "waarde", "label": "Waarde", "field": "waarde", "sortable": True, "align": "right"},
+                {"name": "gemiddelde", "label": "Gemiddelde", "field": "gemiddelde", "sortable": True, "align": "right"},
+                {"name": "min", "label": "Min", "field": "min", "sortable": True, "align": "right"},
+                {"name": "max", "label": "Max", "field": "max", "sortable": True, "align": "right"},
             ]
             if not rows:
                 ui.label("Geen waarden in dit venster voor de selectie.").classes("text-slate-400 text-sm")
@@ -554,16 +573,20 @@ def build_data_tab(ui, data_figure, selection_rows, window_text, state, rebuild)
         with ui.expansion("📚 Data & methode").classes("w-full bg-slate-800"):
             ui.markdown(
                 "**Read-only.** De `data`/`meta`/`findings`-tabellen worden alleen gelezen.\n\n"
-                "**Meetpunten** zijn gefilterd op de gekozen parameter(s); de code tussen `[ ]` vóór "
-                "elke naam toont welke parameters dat punt meet (zie de legenda).\n\n"
-                "**Twee parameters:** parameter 1 staat op de linker y-as (doorgetrokken), parameter 2 "
-                "op de rechter y-as (streepjes) — zo zijn verschillende eenheden te vergelijken. Max 2.\n\n"
-                "**Tijdraster (resample).** Ongelijke resoluties worden display-geresampled met het "
-                "GEMIDDELDE per bin (instelbaar). Alleen weergave; opslag verandert niet. Stroom-totalen "
-                "(neerslag/afvoer) worden dus als bin-gemiddelde getoond, niet als som.\n\n"
-                "**Lege bins blijven leeg** (`connectgaps=False`): geen opvulling/interpolatie, de lijn "
-                "overbrugt gaten niet. Een bin met 1 of met 200 metingen toont als één punt.\n\n"
-                "**YoY %** = (v − v_vorig)/|v_vorig|×100. **Index** = v/v_start×100.")
+                "**Adaptieve resolutie (zoom = resolutie).** Per zichtbaar venster kiest de dashboard "
+                f"automatisch een bin-raster (jaar→15-min) zodat per reeks ≤{resample.POINT_BUDGET} "
+                "punten naar de browser gaan, nooit de ruwe punten. Aggregatie gebeurt IN SQL "
+                "(`GROUP BY` bin), niet in de browser.\n\n"
+                "**Envelope, geen kaal gemiddelde.** Elke bin toont het GEMIDDELDE als lijn én het "
+                "MIN–MAX als band, zodat een piek (bv. een afvoercrest) ook ver uitgezoomd zichtbaar "
+                "blijft — een gemiddelde alleen zou pieken verbergen.\n\n"
+                "**Vloer = native_resolution.** Een dag-reeks wordt nooit sub-dagelijks gebinned; een "
+                "subhourly-reeks mag tot 15-min. Bij volledige inzoom (minder ruwe punten dan budget) "
+                "worden de ruwe punten ongewijzigd getoond.\n\n"
+                "**Meetpunten** zijn gefilterd op de gekozen parameter(s); de code tussen `[ ]` toont "
+                "welke parameters dat punt meet.\n\n"
+                "**YoY %** = (v − v_vorig)/|v_vorig|×100. **Index** = v/v_start×100 (op het bin-"
+                "gemiddelde; de band wordt in die modi niet getoond).")
 
 
 def build_meta_tab(ui, meta_rows):
@@ -609,10 +632,14 @@ def main(argv=None):
     p = argparse.ArgumentParser(description="TellDataDashboard — browse a SQLite package live.")
     p.add_argument("--db", help="SQLite package path (asks if omitted on a TTY)")
     p.add_argument("--port", type=int, default=8080, help="port to serve on (default 8080)")
-    p.add_argument("--period", choices=list(PERIOD_RULES), help="force display grid: D / W / MS")
+    p.add_argument("--period", help="(deprecated, ignored — resolution is now automatic from zoom)")
     p.add_argument("--inspect", action="store_true", help="print detected shape and exit")
     p.add_argument("--check", action="store_true", help="build UI+figures headless, then exit 0")
     args = p.parse_args(argv)
+
+    if args.period:
+        print("note: --period is deprecated and ignored — resolution adapts to the zoom window.",
+              file=sys.stderr)
 
     db_path = args.db
     if not db_path:
@@ -626,10 +653,10 @@ def main(argv=None):
 
     if args.inspect:
         db = open_db(str(db_file))
+        conn = open_conn(str(db_file))
         meta_rows = read_meta_rows(db)
         findings = read_findings(db)
-        span = overall_span_days(db)
-        period = args.period if args.period in PERIOD_RULES else auto_period(span)
+        _, _, span = overall_span(conn)
         sources = sorted({m["source"] for m in meta_rows})
         variables = sorted({m["variable"] for m in meta_rows})
         places = sorted({m["place"] for m in meta_rows})
@@ -641,12 +668,12 @@ def main(argv=None):
         print(f"  parameters : {variables}")
         print(f"  meetpunten : {len(places)} {places if len(places) <= 12 else places[:12] + ['…']}")
         print(f"  span days  : {span}")
-        print(f"  period     : {period} ({PERIOD_LABELS[period]})  [auto unless --period]")
+        print(f"  resolution : adaptive envelope (viz driver), ≤{resample.POINT_BUDGET} pt/series")
         print(f"  findings   : {len(findings)}")
         print(f"  tabs       : Data | Reeksen (meta) | Bevindingen")
         return 0
 
-    build_dashboard(db_file, port=args.port, period_override=args.period, check_only=args.check)
+    build_dashboard(db_file, port=args.port, check_only=args.check)
     return 0
 
 

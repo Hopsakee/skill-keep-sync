@@ -44,7 +44,7 @@ SYN=~/data/sqlite/synthetic-generic.db      # domain-agnostic, fast
 | E21 | Empty/blank-selection state | clear all locations or parameters | a clear "Selecteer …" / "Geen data …" message, not a broken blank canvas |
 | E22 | Upstream scripts untouched | `git -C ~/.claude status --porcelain skills/FetchData/scripts/store.py skills/AnalyseData/scripts/analyse.py` | empty |
 | E23 | tz-mix doesn't crash | `grep -n "utc=True" $SK` | present in resample_one (mixed tz-aware/naive normalised) |
-| E24 | Claude-as-judge | Interceptor screenshots of all three tabs (live browser) | PASS — Data shows multi-series faceted chart + table; Reeksen shows the meta table; Bevindingen shows verbatim findings |
+| E24 | Claude-as-judge | Interceptor screenshots of all three tabs (live a real browser) | PASS — Data shows multi-series faceted chart + table; Reeksen shows the meta table; Bevindingen shows verbatim findings |
 
 ## Stage boundary
 

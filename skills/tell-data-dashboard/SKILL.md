@@ -124,7 +124,7 @@ unit-labelled axes, a title, one annotation. Run `chart_lint.py dashboard.py` �
 - **`ui.run()` blocks.** Verify with `--check` or launch in the background + poll with
   `curl --retry --retry-connrefused`.
 - **Headless Brave can't screenshot the Plotly charts** (it tears down the NiceGUI websocket). Use
-  Interceptor against a live browser (keeps the WS alive); `--check` confirms figures build.
+  Interceptor against a live a real browser (keeps the WS alive); `--check` confirms figures build.
 - **Empty `findings` is graceful** — the Bevindingen page shows "draai eerst AnalyseData", no crash.
 - **`scripts/` not `Tools/`** — mirrors the family layout. Family consistency over the generic
   CreateSkill `Tools/` default.
