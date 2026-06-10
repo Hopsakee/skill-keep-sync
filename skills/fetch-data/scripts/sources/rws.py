@@ -9,9 +9,11 @@ Generalises the proven path in a prior hydrology-fetch script (fetch_rws):
 
 CRITICAL DIFFERENCES from the proving ground (which built a wide DAILY-resampled panel):
   - NO daily resample — FetchData stores RAW, native-resolution (sub-daily) observations. aggregation='raw'.
-  - Sentinel: DDL encodes missing as 999999999. We mask |value| >= 1e8 to NULL (kept as rows, value NULL)
-    and record sentinel_masked in meta. We do NOT drop the rows — a sentinel timestamp is real signal that
-    the station reported "no value", and REAL DATA OR NO DATA means NULL, not a vanished row.
+  - Sentinel: DDL encodes missing as 999999999 (masked by magnitude, |value| >= 1e8) plus the secondary
+    "nines" sentinels 99999 and 999.99 (masked by exact match — see SENTINEL_EXACT). Sentinels become
+    NULL (kept as rows, value NULL) and sentinel_masked is recorded in meta. We do NOT drop the rows — a
+    sentinel timestamp is real signal that the station reported "no value", and REAL DATA OR NO DATA
+    means NULL, not a vanished row.
   - Timezone: ddlpy's index is tz-AWARE. We tz_convert("UTC") — NEVER tz_convert(None) (the proving ground
     dropped the offset; we keep it so cross-source joins can't misalign).
 
@@ -25,7 +27,15 @@ import pandas as pd
 # store.py lives one directory up; importable when scripts/ is on sys.path (fetch.py arranges that).
 from store import SeriesPayload
 
-SENTINEL = 1e8  # DDL 999999999 missing-value marker; mask |value| >= this to NULL
+SENTINEL_MAGNITUDE = 1e8  # DDL 999999999 missing-value-marker family; mask |value| >= this to NULL
+# Secondary RWS "nines" missing-value sentinels observed in stored Q/WATHTE series and grounded
+# against live data. Masked by EXACT match so a real (if extreme) reading is never caught. Extend ONLY
+# with evidence, never blind.
+#  - 99999   : physically impossible discharge (~3700x the Vecht's mean) — clearly a sentinel.
+#  - 999.99  : the exact MAX of TWO independent discharge series (ommen.vecht, zwartsluis.meppelerdiep);
+#              a 5-char "999.99" field-cap sentinel. Added 2026-06-10 on the user's go (code + a matching
+#              in-place repair of the live package changed together).
+SENTINEL_EXACT: frozenset[float] = frozenset({99999.0, 999.99})
 
 # Grootheid.Code : (variable, fallback_unit) — the API-reported unit wins; this is only the fallback.
 RWS_VARS: dict[str, tuple[str, str]] = {
@@ -100,9 +110,9 @@ def fetch_rws(
                 continue
 
             v = pd.to_numeric(m["Meetwaarde.Waarde_Numeriek"], errors="coerce")
-            sentinel_mask = v.abs() >= SENTINEL
+            sentinel_mask = (v.abs() >= SENTINEL_MAGNITUDE) | v.isin(SENTINEL_EXACT)
             n_sentinel = int(sentinel_mask.sum())
-            v = v.mask(sentinel_mask)  # 999999999 -> NaN -> stored NULL (rows kept)
+            v = v.mask(sentinel_mask)  # 999999999 / 99999 -> NaN -> stored NULL (rows kept)
 
             idx = pd.DatetimeIndex(m.index)
             if idx.tz is None:
@@ -130,8 +140,10 @@ def fetch_rws(
                 endpoint="ddlpy.measurements",
                 request_params={"naam": naam, "grootheid": groot, "station_code": location_id,
                                 "start": start, "end": end, "timezone": "UTC", "box": box},
-                sentinel_masked=(f"|value|>={SENTINEL:.0f} -> NULL (n={n_sentinel})"
-                                 if n_sentinel else None),
+                sentinel_masked=(
+                    f"|value|>={SENTINEL_MAGNITUDE:.0f} or value in "
+                    f"{{{','.join(f'{x:g}' for x in sorted(SENTINEL_EXACT))}}} -> NULL "
+                    f"(n={n_sentinel})" if n_sentinel else None),
                 location_label=naam,
                 lat=float(sel_row.get("Lat")) if "Lat" in sel_row.index else None,
                 lon=float(sel_row.get("Lon")) if "Lon" in sel_row.index else None,

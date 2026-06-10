@@ -22,7 +22,7 @@ description: >
 
 Stage 1 of the modular data pipeline. Its one job: **raw data from a source → a standard SQLite store.**
 
-## The contract (locked 2026-06-06)
+## The contract (locked 2026-06-06 —)
 
 - **Store = one SQLite file**, three tables: `data` (tidy obs), `meta` (per-series provenance),
   `findings` (empty, populated later by `AnalyseData`). Full schema: `References/Schema.md`.

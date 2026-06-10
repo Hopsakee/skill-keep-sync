@@ -8,7 +8,7 @@ KNMI's daily product already returns DAILY aggregates, so native_resolution='dai
 series is stored as-is (aggregation records whether the daily value is a mean or a sum per var).
 
 CRITICAL DIFFERENCES from the proving ground (which built a wide weekly panel):
-  - NO weekly resample, NO merge — FetchData stores the raw daily series (raw-store rule).
+  - NO weekly resample, NO merge — FetchData stores the raw daily series (the raw-store rule).
   - UNIT GOTCHA: hydropandas returns KNMI precip (RH) and Makkink evaporation (EV24) in METRES.
     We multiply ×1000 and store the honest unit 'mm'. Storing metres labelled 'mm' bit us before.
   - Timestamps: KNMI daily values are by local (Europe/Amsterdam) day. We localise the daily date to

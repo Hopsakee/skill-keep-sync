@@ -7,7 +7,7 @@ Generalises the proven path in a prior hydrology-fetch script:
 
 CRITICAL DIFFERENCE from the proving ground: that script did `.resample("D").mean()` inside the
 fetch. We DO NOT. FetchData stores raw, native-resolution observations; resampling is
-AnalyseData's job (raw-store rule). aggregation is therefore 'raw'.
+AnalyseData's job (the raw-store rule). aggregation is therefore 'raw'.
 
 Its ONLY job: hit the API, hand back tidy SeriesPayloads. The shared core writes them.
 """

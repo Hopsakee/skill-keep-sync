@@ -1,6 +1,6 @@
 # SQLite package schema (the contract every stage depends on)
 
-One `.db` file = one dataset package. Three tables. Locked 2026-06-06 .
+One `.db` file = one dataset package. Three tables. Locked 2026-06-06.
 
 ## `data` — tidy observations (one row per obs)
 
