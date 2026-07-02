@@ -1,13 +1,6 @@
 ---
-name: diagramming-codebase
-description: "Explores a Python codebase and creates Mermaid architecture and data model diagrams with prose documentation. Use when asked to diagram, map, visualize, or document a codebase's structure, architecture, or data model."
-title: diagramming-codebase
-license: MIT
-active_version: 1
----
-
----
-name: diagramming-codebase
+name: DiagrammingCodebase
+model: sonnet
 description: "Explores a Python codebase and creates Mermaid architecture and data model diagrams with prose documentation. Use when asked to diagram, map, visualize, or document a codebase's structure, architecture, or data model."
 ---
 
@@ -36,9 +29,9 @@ If the user mentions this skill without specifying a project, **automatically di
 ### Phase 2: Classify Module Status
 
 For each module, assign a status:
-- ÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂ¢ **Done**: Substantially implemented with real logic
-- ÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂ¡ **Partial/Broken**: Partially implemented, has TODOs, broken imports, or incomplete functions
-- ÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂ´ **Stub**: Only placeholder code (e.g., `pass`, `foo()`, empty classes)
+- Ã°ÂÂÂ¢ **Done**: Substantially implemented with real logic
+- Ã°ÂÂÂ¡ **Partial/Broken**: Partially implemented, has TODOs, broken imports, or incomplete functions
+- Ã°ÂÂÂ´ **Stub**: Only placeholder code (e.g., `pass`, `foo()`, empty classes)
 
 ### Phase 3: Create the Architecture Diagram
 
@@ -60,7 +53,7 @@ Guidelines:
 - Show module-level boxes, not individual functions (unless a module has a critical broken piece worth highlighting)
 - Label edges with what flows through them (e.g., "parse markdown", "upsert records", "query")
 - Keep it to 5-8 subgraphs maximum for readability
-- Include a legend: `**Legend**: ÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂ¢ Done | ÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂ¡ Partial/Broken | ÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂ´ Stub/Not Started | ÃÂÃÂ°ÃÂÃÂÃÂÃÂÃÂÃÂµ External`
+- Include a legend: `**Legend**: Ã°ÂÂÂ¢ Done | Ã°ÂÂÂ¡ Partial/Broken | Ã°ÂÂÂ´ Stub/Not Started | Ã°ÂÂÂµ External`
 
 ### Phase 4: Create the Data Model Diagram (if applicable)
 
@@ -158,8 +151,9 @@ This keeps notebooks and markdown files in sync: notebooks are the source of tru
 
 ## Tips
 
-- Always read actual module files before diagramming ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ never guess from filenames alone
+- Always read actual module files before diagramming Ã¢ÂÂ never guess from filenames alone
 - Check for broken imports by looking at `from .module import ...` statements and verifying the referenced modules exist
-- Look for mixed API patterns (e.g., some modules using an ORM, others using raw SQL) ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ these are common issues worth highlighting
+- Look for mixed API patterns (e.g., some modules using an ORM, others using raw SQL) Ã¢ÂÂ these are common issues worth highlighting
 - Check if referenced database tables have corresponding model definitions
 - Note any `TODO`, `FIXME`, or `HACK` comments as issues
+
