@@ -1,23 +1,27 @@
 ---
 name: AnalyseData
+model: sonnet
 description: >
   Find honest patterns in a SQLite dataset package and write them to its `findings` table — the
   SECOND stage of the modular data pipeline (FetchData -> AnalyseData -> TellDataStory).
   Reads the `data` + `meta` tables a `FetchData` package ships, finds patterns by itself, and
   fills the empty `findings` table `FetchData` hands over. DOMAIN-AGNOSTIC by design: it runs on
   hydrology, energy, housing, "or whatever" — domain specifics (period, lag, variable meaning) are
-  INPUTS, never baked in. Rung 1 implements CORRELATION-with-caveats only: deseasonalized, lag-
-  scanned Pearson r + p-value, with a MANDATORY caveats[] array on every finding (deseasonalize,
-  lag-is-location-dependent, potential-vs-actual ET, multiple-comparisons). Optionally grounds
-  pattern-finding against a research-derived hypothesis baseline (`--baseline FILE`) and labels each
-  consistent / weaker / absent / surprising — so findings are honest and cite a source instead of
-  being a correlation lottery. Dual output: durable `findings` rows (via fastlite) + a short human-
-  readable summary. USE WHEN analyse data, analyse dataset package, find correlations, find patterns,
+  INPUTS, never baked in. Finding-types (`--findings`, default `correlation` for byte-compatible
+  rung-1 behaviour): CORRELATION-with-caveats (deseasonalized, lag-scanned Pearson r + effective-N /
+  Bonferroni-corrected p), plus ANOMALY (robust modified-z), TREND, and FACT. The TREND type is
+  Theil–Sen slope + Mann–Kendall significance with a first-class `significant` flag, an optional
+  common-window fit (`--trend-window`) for cross-series comparability, a plausibility/`suspect` flag
+  (`--trend-plausible-max`), and a min-points guard — so a large slope is never reported as real
+  without its significance (and the geo-map in TellDataStory hatches the non-significant ones).
+  Every finding carries a MANDATORY caveats[] array. Optionally grounds correlation against a
+  research-derived hypothesis baseline (`--baseline FILE`), labelling each consistent / weaker /
+  absent / surprising. Dual output: durable `findings` rows (via fastlite) + a short human-readable
+  summary. USE WHEN analyse data, analyse dataset package, find correlations, find patterns,
   fill findings table, correlation with caveats, analyse_data, stage 2, research baseline test,
-  deseasonalize correlation, lag correlation. NOT FOR pulling/fetching raw data (use FetchData),
-  charts/dashboards/stories (use TellDataStory), one-shot CSV profiling (use DataAnalysis),
-  anomaly/trend/fact finding-types (later rungs — rung 1 is correlation only), or ingesting
-  documents into the Library (use _TO_LIBRARY).
+  deseasonalize correlation, lag correlation, trend, trend significance, Theil-Sen, Mann-Kendall,
+  significant trend, anomaly detection, descriptive facts. NOT FOR pulling/fetching raw data
+  (use FetchData), charts/dashboards/stories/maps (use TellDataStory / TellDataDashboard), or ingesting documents into the Library (use _TO_LIBRARY).
 ---
 
 # AnalyseData
@@ -138,24 +142,37 @@ findings. `caveats[]` travels WITH the finding so `TellDataStory` cannot over-cl
   agnosticism test silently on hydro-only data. The synthetic generic-column run (no rules) must
   produce zero domain caveats and no crash — that is the real agnosticism probe.
 
-## Roadmap — Rung 2 (deferred TODOs)
+### Learnings from the nl-groundwater-trends map (2026-06)
 
-Rung 1 is deliberately a minimal, honest correlation engine. These are flagged in `scripts/analyse.py`
-(grep `TODO(rung2`) and picked up in rung 2 — **not** built yet:
+- **`groupby(<DatetimeIndex>)` SILENTLY EMPTIES the result — group by `.to_numpy()`.** Passing a
+  pandas `DatetimeIndex` (or any pandas Index) as the `by=` grouper makes pandas LABEL-ALIGN it to the
+  Series' own index instead of grouping positionally; mismatched labels → an empty result, no error.
+  A half-month reducer returned 0 rows this way and every downstream stat became NaN/object-dtype.
+  Always `s.groupby(keys.to_numpy())` (or `keys.values`) for a positional grouper.
+- **Extremes-based aggregates are sampling-density-sensitive — normalize cadence + require a min
+  count.** A per-period min/max (or a GxG HG3/LG3 = mean of the 3 highest/lowest) drops/rises simply
+  because a denser-sampled period resolves an extreme a sparse period missed — a measurement artifact
+  masquerading as signal. Reduce to a fixed cadence (e.g. biweekly median) BEFORE taking the extreme,
+  and emit NaN (never a fabricated 0/ffill) for a period below a min reading-count.
+- **Sampling INHOMOGENEITY is its own caveat.** A series whose cadence/method changes mid-record
+  (manual biweekly → automatic diver, ~24 → ~2000 obs/yr) biases extremes and even the slope: the
+  early sparse years anchor a steeper apparent trend. `meta.native_resolution` is whole-series, so
+  check per-period obs-density for a step-change and attach an inhomogeneity caveat when found.
+- **Cross-entity trend comparison needs a COMMON window.** Comparing slopes across many series whose
+  records end on different dates is biased — a drought year at one record's end becomes a fake
+  between-series difference. Theil–Sen is robust to outliers, NOT to different time windows; fit every
+  compared slope on the shared `[start,end]` window.
+- **Physically-implausible effect sizes are FLAGGED, not silently shown or dropped.** A computed
+  effect beyond a domain-plausible bound (a groundwater trend of +67 cm/yr) is almost always a datum
+  shift / sensor splice / wrong sub-series — mark it `suspect` (bound supplied as DATA, like
+  `--caveat-rules`), exclude it from any comparison/colour scale, and surface it as a flagged finding.
+  Showing it as real over-claims; dropping it hides a data problem. Both are dishonest.
 
-1. **Other finding-types** — `anomaly`, `trend`, `fact` alongside `correlation` (the `findings.type`
-   column already allows them). Each stays one-job + caveated.
-2. **STL deseasonalization** — replace the guarded `NotImplementedError` with statsmodels STL (auto
-   trend/seasonal/residual, no need to know the period up front). STL is the correct *general*
-   default; `monthly` is only the hydro-board choice.
-3. **Autocorrelation-robust p (effective sample size)** — the reported p is Bonferroni-corrected for
-   the lag scan but still assumes independent samples; serially autocorrelated hydrology series make
-   it optimistic. Add an effective-N adjustment or block-bootstrap p. **Load-bearing for the labels.**
-4. **Two-sided lag scan** — the autonomous pass scans one-sided forward lags (a leads b) only; offer a
-   symmetric ± scan so reverse-lead pairs surface without a hand-set negative `--lag-min`.
-5. **Absent→resolved dedup** — findings dedup keys on `(type, columns, period)`, so a hypothesis that
-   was ABSENT and later resolves (series backfilled) leaves a stale `baseline-absent` row beside the
-   real finding. Key on a stable hypothesis identity instead.
+## Roadmap
+
+Rung 2 SHIPPED 2026-06-10 (anomaly/trend/fact finding-types, opt-in STL deseasonalize, effective-N p
+via Dawdy–Matalas default ON, two-sided lag scan, `[hyp:]` dedup) — build record:
+domain-agnosticism on a second domain (energy/housing).
 
 ## Pipeline pointers
 

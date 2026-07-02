@@ -579,16 +579,33 @@ def run_anomaly(wide, method, granularity, created_by, rules, z_thresh,
 
 
 def run_trend(wide, method, granularity, created_by, rules,
-              grain_name=None, grain_seconds=None, native_map=None):
+              grain_name=None, grain_seconds=None, native_map=None,
+              alpha=0.05, window=None, min_n=4, plausible_max=None):
     """Per-series monotonic trend. Theil-Sen slope (robust to outliers) + Mann-Kendall via Kendall's
     tau (tau + p). statistic = Theil-Sen slope in units per grain-period. evidence: slope, intercept,
-    tau, p, n, grain. The slope is over an integer period index (0,1,2,...), so units are 'value per
-    one {grain} step'. caveats: MK p assumes independent samples, slope units, deseasonalize state."""
+    tau, p, n, grain, plus a first-class `significant` flag (p<alpha) and a `suspect` flag.
+
+    nl-groundwater-trends learnings folded in:
+      - `significant` (MK p < alpha) is recorded explicitly + as `confidence`=1-p, and stated in a
+        caveat — a large slope is routinely NOT significant; downstream (the map viz) hatches the
+        non-significant ones instead of drawing them solid.
+      - `window=(start,end)` fits every series on a COMMON time window so cross-series slopes are
+        comparable (differing record end-dates otherwise become fake between-series differences).
+      - `plausible_max`: |slope| beyond a domain-plausible bound is flagged `suspect` (likely a datum
+        shift / sensor splice) — surfaced, excluded by the viz from the colour scale, never dropped.
+      - `min_n`: require >= this many points for a slope (a near-empty series yields no fabricated trend).
+    """
     findings, summary_rows = [], []
     for key in wide.columns:
         s, note = deseasonalize_noted(wide[key], method, grain_name or "daily")
         s = s.dropna()
-        if len(s) < 4:
+        if window is not None:                     # common analysis window for cross-series comparability
+            s = s.loc[window[0]:window[1]]
+            if len(s) == 0:
+                print(f"[trend] {key}: 0 points in window {window[0]}..{window[1]} — skipped.",
+                      file=sys.stderr)
+                continue
+        if len(s) < max(4, int(min_n)):
             continue
         x = np.arange(len(s), dtype=float)        # integer grain-period index (0,1,2,...)
         y = s.to_numpy(dtype=float)
@@ -596,13 +613,18 @@ def run_trend(wide, method, granularity, created_by, rules,
         tau, p = stats.kendalltau(x, y)
         if tau is None or np.isnan(tau):
             continue
+        significant = bool(p < alpha)
+        suspect = bool(plausible_max is not None and abs(float(slope)) > float(plausible_max))
         ev = dict(slope=round(float(slope), 8), intercept=round(float(intercept), 6),
                   slope_lo=round(float(lo), 8), slope_hi=round(float(hi), 8),
                   tau=round(float(tau), 6), p=round(float(p), 8), n=int(len(s)), grain=granularity,
-                  deseasonalize=method)
+                  deseasonalize=method, significant=significant, alpha=alpha, suspect=suspect,
+                  plausible_max=(None if plausible_max is None else float(plausible_max)),
+                  window=(None if window is None else [str(window[0]), str(window[1])]))
         cav = [
             f"Theil-Sen slope (robust median-of-pairwise-slopes); Mann-Kendall trend test via "
-            f"Kendall's tau={tau:+.3f}, p={p:.3g}.",
+            f"Kendall's tau={tau:+.3f}, p={p:.3g} -> {'SIGNIFICANT' if significant else 'NOT significant'} "
+            f"at alpha={alpha} (magnitude without significance over-claims; report both).",
             f"statistic = Theil-Sen slope in value-units per ONE {granularity} period (slope over the "
             f"integer grain-period index).",
             "Mann-Kendall p assumes independent samples; serial autocorrelation inflates significance "
@@ -611,6 +633,13 @@ def run_trend(wide, method, granularity, created_by, rules,
              else "NOT deseasonalized — a seasonal cycle can masquerade as trend over a partial-year window."
              if method == "none" else f"Deseasonalized via {method} climatology before the trend test."),
         ]
+        if window is not None:
+            cav.append(f"Fitted on the common window [{window[0]}, {window[1]}] so slopes are comparable "
+                       f"across series (not biased by differing record end-dates).")
+        if suspect:
+            cav.append(f"SUSPECT: |slope| {abs(slope):.4g} exceeds the plausibility bound {plausible_max} "
+                       f"per {granularity} — almost always a datum shift / sensor splice / wrong sub-series, "
+                       f"not real signal. Surface it flagged; exclude from any comparison/colour scale.")
         if note:
             cav.append(note)
         if grain_name is not None and grain_seconds is not None:
@@ -619,9 +648,15 @@ def run_trend(wide, method, granularity, created_by, rules,
             m = str(rule.get("match", "")).lower()
             if m and m in str(key).lower():
                 cav.append(str(rule.get("caveat", "")))
+        # confidence=None on purpose: a `1-p` here would be the RAW Mann-Kendall p, NOT the
+        # effective-N/Bonferroni-corrected p that correlation findings put in `confidence` — mixing
+        # them in one column misleads any cross-type ranking (Engineer review H1, 2026-06-20).
+        # Significance is first-class in evidence.significant (raw MK p<alpha, caveated); the map reads that.
         findings.append(make_typed_finding("trend", [key], f"trend {granularity} ({key})",
                                            slope, None, cav, ev, created_by))
-        summary_rows.append(f"  - {key}: slope={slope:+.4g}/{granularity}, tau={tau:+.2f} (p={p:.3g})")
+        flag = "*" if significant else ("!" if suspect else " ")
+        summary_rows.append(f" {flag}{key}: slope={slope:+.4g}/{granularity}, tau={tau:+.2f} "
+                            f"(p={p:.3g}{', SUSPECT' if suspect else ''})")
     return findings, summary_rows
 
 
@@ -692,6 +727,15 @@ def main(argv=None):
                          "p assumes independent samples — useful to demonstrate the autocorrelation widening.")
     ap.add_argument("--anomaly-z", dest="anomaly_z", type=float, default=3.5,
                     help="Modified-z threshold for anomaly flagging (Iglewicz-Hoaglin default 3.5).")
+    ap.add_argument("--trend-window", dest="trend_window", default=None,
+                    help="START,END (ISO dates) — fit every trend on this COMMON window so cross-series "
+                         "slopes are comparable (differing record end-dates otherwise bias the comparison).")
+    ap.add_argument("--trend-min-n", dest="trend_min_n", type=int, default=4,
+                    help="Minimum points for a trend slope (default 4). Raise for an honest long-record fit; "
+                         "a series below it yields no trend row (never a fabricated slope).")
+    ap.add_argument("--trend-plausible-max", dest="trend_plausible_max", type=float, default=None,
+                    help="|slope|-per-grain bound; a trend beyond it is flagged `suspect` (likely a datum "
+                         "shift / sensor splice), surfaced flagged and excluded by the viz from the scale.")
     ap.add_argument("--alpha", type=float, default=0.05)
     ap.add_argument("--baseline", help="Path to a research-derived hypotheses JSON (agent-supplied)")
     ap.add_argument("--caveat-rules", dest="caveat_rules",
@@ -768,10 +812,18 @@ def main(argv=None):
         lines.append("\n## Anomalies (per-series robust outliers, modified z)")
         lines += anrows
     if "trend" in selected:
+        twin = None
+        if args.trend_window:
+            a, b = [p.strip() for p in args.trend_window.split(",", 1)]
+            twin = (pd.Timestamp(a), pd.Timestamp(b))
+            if twin[0] > twin[1]:
+                ap.error(f"--trend-window start ({a}) is after end ({b})")
         tnf, tnrows = run_trend(wide, args.deseasonalize, args.granularity, args.created_by, rules,
-                                grain_name, grain_seconds, native_map)
+                                grain_name, grain_seconds, native_map, alpha=args.alpha,
+                                window=twin, min_n=args.trend_min_n,
+                                plausible_max=args.trend_plausible_max)
         all_findings += tnf
-        lines.append("\n## Trends (per-series Theil-Sen + Mann-Kendall)")
+        lines.append("\n## Trends (per-series Theil-Sen + Mann-Kendall; '*'=significant, '!'=suspect)")
         lines += tnrows
     if "fact" in selected:
         fnf, fnrows = run_fact(wide, meta, args.granularity, args.created_by, rules)

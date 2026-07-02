@@ -41,3 +41,14 @@ two-sided lag scan + stable-hypothesis-identity dedup. The DEFAULT run (no `--fi
 stays correlation-only with rung-1 behaviour so existing idempotency holds; the new finding-types
 fire only when named via `--findings`. STL is OPT-IN (`--deseasonalize stl`); `monthly` and `none`
 are unchanged. Rung 3 (a 2nd domain to re-prove agnosticism) is the next rung.
+
+## Trend finding-type — significance + plausibility (nl-groundwater-trends, 2026-06)
+
+Binary checks (synthetic package: declining / rising / flat / steep / 3-point series; `--findings trend`):
+
+- [ ] A monotone declining series yields a trend row with `statistic` (slope) < 0; a rising series > 0.
+- [ ] Each trend row's evidence has a `significant` boolean = (Mann–Kendall p < alpha); a clean monotone series is significant, a flat/alternating series is NOT.
+- [ ] Each trend row exposes significance in `evidence.significant` (NOT in `confidence`, which stays null so it is not confused with correlation's corrected confidence).
+- [ ] With `--trend-plausible-max B`, a series whose |slope| > B has evidence `suspect=true`; others `suspect=false`.
+- [ ] A series with fewer than `--trend-min-n` valid points produces NO trend row (no fabricated slope).
+- [ ] `--trend-window START,END` restricts the fit: evidence `window` records [START,END] and `n` drops to the in-window count.
