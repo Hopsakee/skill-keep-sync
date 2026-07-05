@@ -1,5 +1,6 @@
 ---
 name: TellDataDashboard
+model: deterministic
 description: >
   Serve a LIVE, clear, comprehensible NiceGUI dashboard to BROWSE a finished SQLite PACKAGE — the
   live-app sibling of TellDataStory in the modular data pipeline
@@ -20,10 +21,9 @@ description: >
   dashboard from a database, browse the data, look through the tables, explore a data package,
   interactive dashboard from the pipeline, nicegui dashboard from db, tell_data_dashboard, page per
   table, select measurement points, select parameters, stage 3 dashboard. NOT FOR a dashboard from a
-  loose CSV/Excel file (use DataDashboardPython), a static shareable HTML narrative (use
-  TellDataStory), a React/browser dashboard (use DataDashboardTypeScript), finding patterns /
-  computing correlations (use AnalyseData), pulling raw data (use FetchData), or one-shot CSV
-  profiling (use DataAnalysis).
+  loose CSV/Excel file (run FetchData to package it first), a static shareable HTML narrative (use
+  TellDataStory), finding patterns / computing correlations (use AnalyseData), or pulling raw
+  data (use FetchData).
 ---
 
 # TellDataDashboard
@@ -129,6 +129,14 @@ unit-labelled axes, a title, one annotation. Run `chart_lint.py dashboard.py` �
 - **`scripts/` not `Tools/`** — mirrors the family layout. Family consistency over the generic
   CreateSkill `Tools/` default.
 
+### Learnings from the nl-groundwater-trends map (2026-06)
+
+- **Encode significance/uncertainty visually — never render a non-significant or suspect finding
+  identically to a solid one.** When the Bevindingen page (or any map view) shows a finding that
+  carries a `significant`/`suspect` flag, distinguish it (hatch/grey/fade + a label), or the dashboard
+  silently asserts a real effect the stats don't support. Match grondwatertools.nl's "geen
+  significante trend" behaviour rather than colouring an insignificant slope as if it were fact.
+
 ## What gets written
 
 Nothing to the package — it serves a live app and is read-only on `data`/`meta`/`findings`. The only
@@ -145,5 +153,4 @@ echo '{"ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'","skill":"TellDataDashboard","work
 - Stage 1 (fetch + empty `findings`): `~/.claude/skills/FetchData/`.
 - Stage 2 (fills `findings`): `~/.claude/skills/AnalyseData/`.
 - Stage 3 static story sibling: `~/.claude/skills/TellDataStory/`.
-- Engine lineage: `~/.claude/skills/DataDashboardPython/scripts/build_dashboard.py`.
 - Chart rules (reused): `References/ChartDesign.md` + `scripts/chart_lint.py`.
