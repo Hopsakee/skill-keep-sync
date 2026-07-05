@@ -1,33 +1,52 @@
 ---
-name: scaffold-nicegui
-description: "Scaffold a new NiceGUI webapp project with working dark/light mode, CSS variable theming, Docker deployment, and a clean app/ structure. USE WHEN scaffold nicegui, new nicegui app, create nicegui project, start nicegui project, bootstrap nicegui."
-title: scaffold-nicegui
-active_version: 1
+name: ScaffoldNicegui
+model: sonnet
+description: Scaffold a new NiceGUI webapp project with working dark/light mode, CSS variable theming, Docker deployment, and agent instructions. USE WHEN scaffold nicegui, new nicegui app, create nicegui project, start nicegui project, bootstrap nicegui.
 ---
 
-# Scaffold NiceGUI
+## Customization
 
-Scaffold a complete, working NiceGUI webapp project with production-ready conventions baked in: dark/light theming via CSS variables, a shared layout context manager, env-driven config, and a Docker setup.
+**Before executing, check for user customizations at:**
+`~/.claude/PAI/USER/SKILLCUSTOMIZATIONS/ScaffoldNicegui/`
+
+If this directory exists, load and apply any PREFERENCES.md, configurations, or resources found there. These override default behavior. If the directory does not exist, proceed with skill defaults.
+
+## 🚨 MANDATORY: Voice Notification (REQUIRED BEFORE ANY ACTION)
+
+**You MUST send this notification BEFORE doing anything else when this skill is invoked.**
+
+1. **Send voice notification**: Voice notify per `skills/CLAUDE.md` § Voice notification, message: "Running the Scaffold workflow in the ScaffoldNiceGUI skill to create a new NiceGUI project"
+
+2. **Output text notification**:
+   ```
+   Running the **Scaffold** workflow in the **ScaffoldNicegui** skill to create a new NiceGUI project...
+   ```
+
+**This is not optional. Execute this curl command immediately upon skill invocation.**
+
+# ScaffoldNiceGUI
+
+Scaffold a complete, working NiceGUI webapp project with all conventions from the pkw-web experience baked in.
 
 ## What it creates
 
 A project directory with:
-
-- `main.py` â entry point with `ui.run()`, env-driven `storage_secret`, dark mode
-- `app/config.py` â dataclass `Settings` loaded from env vars
-- `app/components/layout.py` â shared layout: CSS variable theming, dark/light toggle, header, `page_layout` context manager
-- `app/pages/home.py` â sample home page using the `page_layout` context manager
-- `pyproject.toml` â uv dependencies (nicegui, httpx, python-dotenv) + pytest dev group
-- `.python-version` â pins 3.12
-- `Dockerfile` â `astral-sh/uv` python3.12 pattern
-- `compose.yaml` â single-service compose publishing the app port
+- `main.py` — entry point with `ui.run()`, `storage_secret`, dark mode
+- `app/config.py` — dataclass Settings from env vars
+- `app/components/layout.py` — shared layout with CSS variable theming, dark/light toggle, header
+- `app/pages/home.py` — sample home page using `page_layout` context manager
+- `pyproject.toml` — uv dependencies (nicegui, httpx, python-dotenv)
+- `.python-version` — pins 3.12
+- `Dockerfile` — uv:python3.12-trixie-slim pattern
+- `compose.yaml` — hopsakee-server hup network pattern
 - `.gitignore`, `.dockerignore`
+- `AGENTS.md`, `AGENTS-main.md`, `skills/` — copied from agent-instruct-nicegui
 
 ## Execution
 
 ### Step 1: Gather parameters
 
-Ask the user (via AskUserQuestion or directly) for:
+Ask the user (via AskUserQuestion) for:
 
 | Parameter | Placeholder | Default | Example |
 |-----------|-------------|---------|---------|
@@ -35,17 +54,29 @@ Ask the user (via AskUserQuestion or directly) for:
 | Project title | `{{PROJECT_TITLE}}` | Titlecased project name | `My App` |
 | Project description | `{{PROJECT_DESCRIPTION}}` | `A NiceGUI web application` | `Dashboard for sensor data` |
 | Port | `{{APP_PORT}}` | `8080` | `8080` |
-| Target directory | â | `./{{PROJECT_NAME}}` | `~/code/my-app` |
-| Additional deps | â | none | `python-frontmatter markdown` |
-| Create GitHub repo? | â | ask | yes/no |
+| Target directory | — | `~/Code/{{PROJECT_NAME}}` | `~/Code/my-app` |
+| Additional deps | — | none | `python-frontmatter markdown` |
+| Create GitHub repo? | — | yes | yes/no |
 
 ### Step 2: Copy template files
 
-1. Read all files from this skill's `template/` directory.
-2. For each file, replace every `{{PLACEHOLDER}}` with the gathered parameters.
-3. Write each file to the target directory, preserving the directory structure.
+1. Read all files from `~/.claude/skills/ScaffoldNicegui/template/`
+2. For each file, replace all `{{PLACEHOLDER}}` values with the gathered parameters
+3. Write each file to the target directory, preserving the directory structure
 
-### Step 3: Install dependencies
+### Step 3: Copy agent instructions
+
+Copy from `~/Code/agent-instruct-nicegui/`:
+- `AGENTS.md` → project root
+- `AGENTS-main.md` → project root
+- `skills/` directory → project root
+
+If the repo doesn't exist locally, clone it:
+```bash
+gh repo clone Hopsakee/agent-instruct-nicegui ~/Code/agent-instruct-nicegui
+```
+
+### Step 4: Install dependencies
 
 ```bash
 cd {target_dir}
@@ -53,48 +84,40 @@ uv sync
 ```
 
 If additional deps were specified:
-
 ```bash
 uv add {additional_deps}
 ```
 
-### Step 4: Initialize git
+### Step 5: Initialize git
 
 ```bash
 cd {target_dir}
 git init
 git branch -m main
 git add -A
-git commit -m "Initial scaffold from scaffold-nicegui skill"
+git commit -m "Initial scaffold from ScaffoldNiceGUI skill"
 ```
 
-(Let git use the user's existing global `user.name` / `user.email` â do not hardcode an identity.)
+(Let git use the user's existing global `user.name` / `user.email` — do not hardcode an identity.)
 
-### Step 5: Create GitHub repo (if requested)
+### Step 6: Create GitHub repo (if requested)
 
 ```bash
-gh repo create {{PROJECT_NAME}} --public --description "{{PROJECT_DESCRIPTION}}" --source . --push
+gh repo create Hopsakee/{PROJECT_NAME} --public --description "{PROJECT_DESCRIPTION}" --source . --push
 ```
 
-Use `--private` instead of `--public` if the user prefers. Prefix with an org (`gh repo create <org>/{{PROJECT_NAME}} ...`) only if the user names one.
+### Step 7: Verify
 
-### Step 6: Verify
-
-1. Set a real `STORAGE_SECRET` env var (see note below), then run `uv run main.py` briefly to confirm the app starts.
-2. Confirm the home page returns HTTP 200 (e.g. `curl -s -o /dev/null -w '%{http_code}' http://localhost:{{APP_PORT}}/`).
-3. Open the page in a browser (or screenshot it) to confirm the UI renders and the dark/light toggle works.
-4. Kill the test server.
-5. Report the project location and (if created) the GitHub URL.
-
-## Security note â storage secret
-
-NiceGUI needs a `storage_secret` to sign the per-user storage cookie. The template reads it from the `STORAGE_SECRET` env var. **Set a real, random value in production** (e.g. `STORAGE_SECRET=$(openssl rand -hex 32)` in your `.env` or deployment environment). The template default is a placeholder and must not be used in production.
+1. Run `uv run main.py` briefly to confirm the app starts
+2. Confirm the home page returns HTTP 200
+3. **Use the Browser skill to take a screenshot and verify the UI renders correctly**
+4. Kill the test server
+5. Report the project location and GitHub URL
 
 ## Post-scaffold guidance
 
 After scaffolding, tell the user:
-
 - "Your NiceGUI app is ready at {target_dir}"
-- "Set `STORAGE_SECRET` in a `.env` file, then run `uv run main.py` to start (port {{APP_PORT}})"
-- "Dark/light toggle, CSS variable theming, and a Docker setup are pre-configured"
-- "Add new pages in `app/pages/` and register them in `main.py`"
+- "Run `uv run main.py` to start (port {APP_PORT})"
+- "AGENTS.md is in place — AI agents will follow NiceGUI conventions"
+- "Dark/light toggle, CSS variable theming, and Docker deployment are pre-configured"
