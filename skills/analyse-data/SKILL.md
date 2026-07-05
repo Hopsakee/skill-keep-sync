@@ -168,12 +168,6 @@ findings. `caveats[]` travels WITH the finding so `TellDataStory` cannot over-cl
   `--caveat-rules`), exclude it from any comparison/colour scale, and surface it as a flagged finding.
   Showing it as real over-claims; dropping it hides a data problem. Both are dishonest.
 
-## Roadmap
-
-Rung 2 SHIPPED 2026-06-10 (anomaly/trend/fact finding-types, opt-in STL deseasonalize, effective-N p
-via Dawdy–Matalas default ON, two-sided lag scan, `[hyp:]` dedup) — build record:
-domain-agnosticism on a second domain (energy/housing).
-
 ## Pipeline pointers
 
 - Stage 1 (fetch + the empty `findings` table this skill owns): `~/.claude/skills/FetchData/`.
