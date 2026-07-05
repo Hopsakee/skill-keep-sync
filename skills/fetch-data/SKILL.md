@@ -1,5 +1,6 @@
 ---
 name: FetchData
+model: deterministic
 description: >
   Pull raw data from a source into a standard single-file SQLite package the caller names — the
   first stage of the modular data pipeline (FetchData -> AnalyseData -> TellDataStory).
@@ -14,15 +15,13 @@ description: >
   sub-daily via ddlpy). USE WHEN fetch data, get raw
   data, pull from BRO, groundwater data, fill a dataset, build a dataset package, fetch into sqlite,
   fetch_data, hydrology fetch, add a data source. NOT FOR resampling/correlation/anomaly finding
-  (use AnalyseData), charts/dashboards/stories (use TellDataStory), one-shot CSV profiling
-  (use DataAnalysis), or ingesting documents into the Library (use _TO_LIBRARY).
+  (use AnalyseData), charts/dashboards/stories (use TellDataStory / TellDataDashboard), or ingesting documents into the Library (use _TO_LIBRARY).
 ---
 
 # FetchData
 
 Stage 1 of the modular data pipeline. Its one job: **raw data from a source → a standard SQLite store.**
 
-## The contract (locked 2026-06-06 —)
 
 - **Store = one SQLite file**, three tables: `data` (tidy obs), `meta` (per-series provenance),
   `findings` (empty, populated later by `AnalyseData`). Full schema: `References/Schema.md`.
@@ -84,6 +83,7 @@ uv run scripts/fetch.py --db PATH --source bro --wells "label:gmw:tube,..." \
 - `scripts/sources/<source>.py` — a fetcher whose only job is to hit the API and return a list of
   `store.SeriesPayload`. Currently: `bro.py` (groundwater), `knmi.py` (meteo, daily), `rws.py` (surface water, raw sub-daily).
 - `scripts/fetch.py` — CLI + a `--source` registry that dispatches to the right fetcher.
+- `scripts/discover_bro.py` — utility to discover and list available BRO wells by location.
 
 **To add a source:** write `scripts/sources/<name>.py` with a `fetch_<name>(...) -> list[SeriesPayload]`,
 add it to the `--source` choices + dispatch in `fetch.py`. Do not touch `store.py`.
@@ -152,3 +152,27 @@ add it to the `--source` choices + dispatch in `fetch.py`. Do not touch `store.p
   is the one deliberate exception — it stays pure stdlib so the storage contract never drifts with a library
   version; the locked write-path was not rewritten. Verification probes and any future read/query helpers use
   fastlite (`Database(path).q("SELECT …")`).
+
+### Learnings from the a prior groundwater-trends tool map (2026-06)
+
+- **Cheap metadata pre-filter BEFORE the expensive payload.** When a source offers a light
+  "summary / extent / period" endpoint, query it to reject a candidate before downloading the full
+  (often MB-scale) series. BRO's `gld/v1/objects/{id}/observationsSummary` (KB of date-ranges) let a
+  national well-discovery skip recent shallow-diver wells without pulling their ~2 MB `seriesAsCsv`
+  each — the difference between a feasible scan and a rate-limited stall. Pattern: pre-filter cheap →
+  fetch full only for the survivors.
+- **Cache the slow LOOKUP step, not just the payload.** The series CSV was already cached, but the
+  un-cached id-resolution (`hydropandas.get_gld_ids_from_gmw`, one call per candidate) was the real
+  rate-limit bottleneck — it turned a re-run into an 8-hour crawl. Cache EVERY per-key API step
+  (id resolution, metadata, summaries) to its own keyed file, and checkpoint the output list per item
+  so a killed or rate-limited run resumes for free.
+- **A long, rate-limited fetch runs as ONE detached self-checkpointing driver — never a separate
+  "watcher" task.** A background watcher set to run the next stage "after the fetch finishes" silently
+  died during an 8-hour idle, so the result was never consumed and the run looked hung. Use a single
+  `setsid nohup` driver that does fetch→next-stage→notify in one process and logs progress; the
+  per-item checkpoint makes it resumable if the process itself dies.
+- **Extension not yet built — a DISCOVERY mode.** This skill fetches NAMED series; the map needed to
+  *find* series matching criteria (area + record-completeness + spatial spread). Prior art lives in
+  `a prior groundwater-trends repo’s discover/add-region scripts`. If discovery lands here, visit the candidate
+  grid in **dispersed (farthest-point-sampling) order** (`discover.dispersed_order`) so an early stop
+  at a target count stays spatially representative instead of clustering in the first rows scanned.
