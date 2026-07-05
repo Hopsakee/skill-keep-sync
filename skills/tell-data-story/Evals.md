@@ -38,3 +38,14 @@ MD=~/data/sqlite/wdodelta-hydro_story.md
 
 Stage 3 = render only. A passing stage-3 skill does NOT find patterns (that is `AnalyseData`) and does
 NOT build an interactive dashboard (that is `DataDashboard*`). E1 must show it computes no statistic.
+
+## Geo-map mode (`scripts/map.py`) — significance-honest spatial render (a prior groundwater-trends tool, 2026-06)
+
+Binary checks (a package with per-location `trend` findings + `meta.lat/lon`):
+
+- [ ] `map.py --db PKG` writes a single self-contained `<stem>_map.html` that opens via file:// (no server) with 0 JS console errors.
+- [ ] One marker per mappable finding at its `meta` lat/lon; a diverging colour legend is present.
+- [ ] A non-significant finding renders HATCHED (marker fill = `url(#hatchN)`); a `suspect` finding renders grey (`#999999`); a significant one is solid.
+- [ ] The renderer computes NO statistic — every shown value (slope, p, n, caveats) is read from the finding row (grep: no scipy/.corr()/theilslopes in map.py).
+- [ ] No interpolated surface/heatmap between points (markers only); a multi-series finding or one lacking meta coords is skipped and reported, never guessed.
+- [ ] Popup caveats are HTML-escaped (verbatim display), matching the story renderer's verbatim-caveat rule.

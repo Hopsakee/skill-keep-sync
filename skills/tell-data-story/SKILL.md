@@ -1,5 +1,6 @@
 ---
 name: TellDataStory
+model: deterministic
 description: >
   Turn a finished dataset package's findings into a short, self-contained human STORY — the THIRD and
   final stage of the modular data pipeline (FetchData -> AnalyseData -> TellDataStory). Reads
@@ -11,16 +12,40 @@ description: >
   computes NO statistic — and every `caveats[]` string is rendered VERBATIM so the story literally
   cannot over-claim. DOMAIN-AGNOSTIC: labels/units/meaning come from `meta` + the finding fields, never
   baked in. The chart obeys the high-signal rules in References/ChartDesign.md and is checked by
-  scripts/chart_lint.py; verify the rendered HTML with a Claude-as-judge screenshot. USE WHEN tell a
+  scripts/chart_lint.py; verify the rendered HTML with a Claude-as-judge screenshot. ALSO has a
+  GEOGRAPHIC POINT-MAP mode (`scripts/map.py`): a self-contained folium/Leaflet HTML that plots
+  per-location findings (default `type='trend'`) at their `meta.lat/lon`, coloured by the finding
+  statistic on a diverging scale, with non-significant findings HATCHED and `suspect` ones greyed —
+  same faithful-renderer rule (reads the finding row, computes nothing; no surface between points).
+  USE WHEN tell a
   data story, visualise findings, render findings, data story, story from findings, narrate findings,
-  chart the findings, close the pipeline, tell_data_story, stage 3, story layer, findings to narrative.
+  chart the findings, close the pipeline, tell_data_story, stage 3, story layer, findings to narrative,
+  map of findings, geographic map, point map, plot wells/stations on a map, spatial map of trends,
+  folium map, leaflet map, map the findings, where are the trends.
   NOT FOR finding patterns / computing correlations (use AnalyseData), pulling raw data (use
-  FetchData), an interactive multi-control dashboard with sliders/toggles (use DataDashboardPython
-  or DataDashboardTypeScript), one-shot CSV profiling (use DataAnalysis), or wisdom extraction
+  FetchData), an interactive dashboard (use TellDataDashboard), or wisdom extraction
   from prose (use ExtractWisdom).
 ---
 
 # TellDataStory
+
+## Geographic point-map mode (`scripts/map.py`)
+
+For per-location findings (a `trend`/`fact`/`anomaly` per well/station), render a spatial map instead
+of (or alongside) the narrative:
+
+```bash
+uv run scripts/map.py --db ~/data/sqlite/pkg.db --finding-type trend   # -> <stem>_map.html
+```
+
+It joins each single-series finding to its `meta.lat/lon`, colours the marker by the finding
+`statistic` (diverging, red=low/falling … blue=high/rising), **hatches non-significant** findings
+(evidence `significant=false`) and **greys `suspect`** ones — so the map can't imply a real trend the
+stats don't support. Faithful renderer: every value is read from the finding row; no statistic is
+computed and no surface is drawn between points. Self-contained HTML, mobile-collapsible methods panel.
+Pairs with `AnalyseData --findings trend` (which writes the `significant`/`suspect` flags).
+
+---
 
 Stage 3 of the modular data pipeline. Its one job: **a package's `findings` + `caveats[]` → a short
 self-contained human narrative + one simple high-signal chart per finding → an `.html` report and a
@@ -113,6 +138,20 @@ these rules; a Claude-as-judge `Interceptor` screenshot is the experiential gate
 - **`scripts/` not `Tools/` on purpose.** This skill mirrors the proven sibling layout
   (`FetchData/scripts/`, `AnalyseData/scripts/`): `uv run --script` files live in `scripts/`. Family
   consistency over the generic CreateSkill `Tools/` default.
+
+### Learnings from the a prior groundwater-trends tool map (2026-06)
+
+- **Encode significance/uncertainty visually — never render a non-significant or suspect finding
+  identically to a solid one.** If a finding carries a `significant` or `suspect` flag, the picture
+  MUST show it (hatch the marker, grey it, or fade it) — otherwise the reader infers a real effect the
+  stats don't support, the exact over-claim this skill polices in text. A point-estimate slope drawn
+  solid next to p≥0.05 reads as fact; hatching it is the honest fix. (Cross-checked against
+  grondwatertools.nl, whose "geen significante trend" is the behaviour to match.)
+- **Self-contained HTML gets read on phones — make overlays collapsible + responsive.** A fixed
+  info/methods panel that's fine on desktop covers a third of the view on mobile. Put it in a
+  `<details>` that auto-collapses below ~600px (`window.matchMedia` removes the `open` attr) and shrink
+  the title with a media query. A bottom-corner legend + title that overlap each other on a phone are
+  the giveaway.
 
 ## Pipeline pointers
 
