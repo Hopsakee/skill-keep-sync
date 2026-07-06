@@ -585,7 +585,7 @@ def run_trend(wide, method, granularity, created_by, rules,
     tau (tau + p). statistic = Theil-Sen slope in units per grain-period. evidence: slope, intercept,
     tau, p, n, grain, plus a first-class `significant` flag (p<alpha) and a `suspect` flag.
 
-    nl-groundwater-trends learnings folded in:
+    a prior groundwater-trends tool learnings folded in:
       - `significant` (MK p < alpha) is recorded explicitly + as `confidence`=1-p, and stated in a
         caveat — a large slope is routinely NOT significant; downstream (the map viz) hatches the
         non-significant ones instead of drawing them solid.

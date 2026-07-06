@@ -142,7 +142,7 @@ findings. `caveats[]` travels WITH the finding so `TellDataStory` cannot over-cl
   agnosticism test silently on hydro-only data. The synthetic generic-column run (no rules) must
   produce zero domain caveats and no crash — that is the real agnosticism probe.
 
-### Learnings from the nl-groundwater-trends map (2026-06)
+### Learnings from the a prior groundwater-trends tool map (2026-06)
 
 - **`groupby(<DatetimeIndex>)` SILENTLY EMPTIES the result — group by `.to_numpy()`.** Passing a
   pandas `DatetimeIndex` (or any pandas Index) as the `by=` grouper makes pandas LABEL-ALIGN it to the

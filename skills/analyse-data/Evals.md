@@ -42,7 +42,7 @@ stays correlation-only with rung-1 behaviour so existing idempotency holds; the 
 fire only when named via `--findings`. STL is OPT-IN (`--deseasonalize stl`); `monthly` and `none`
 are unchanged. Rung 3 (a 2nd domain to re-prove agnosticism) is the next rung.
 
-## Trend finding-type — significance + plausibility (nl-groundwater-trends, 2026-06)
+## Trend finding-type — significance + plausibility (a prior groundwater-trends tool, 2026-06)
 
 Binary checks (synthetic package: declining / rising / flat / steep / 3-point series; `--findings trend`):
 
