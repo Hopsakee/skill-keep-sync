@@ -1,27 +1,9 @@
 ---
 name: AnalyseData
-model: sonnet
-description: >
-  Find honest patterns in a SQLite dataset package and write them to its `findings` table — the
-  SECOND stage of the modular data pipeline (FetchData -> AnalyseData -> TellDataStory).
-  Reads the `data` + `meta` tables a `FetchData` package ships, finds patterns by itself, and
-  fills the empty `findings` table `FetchData` hands over. DOMAIN-AGNOSTIC by design: it runs on
-  hydrology, energy, housing, "or whatever" — domain specifics (period, lag, variable meaning) are
-  INPUTS, never baked in. Finding-types (`--findings`, default `correlation` for byte-compatible
-  rung-1 behaviour): CORRELATION-with-caveats (deseasonalized, lag-scanned Pearson r + effective-N /
-  Bonferroni-corrected p), plus ANOMALY (robust modified-z), TREND, and FACT. The TREND type is
-  Theil–Sen slope + Mann–Kendall significance with a first-class `significant` flag, an optional
-  common-window fit (`--trend-window`) for cross-series comparability, a plausibility/`suspect` flag
-  (`--trend-plausible-max`), and a min-points guard — so a large slope is never reported as real
-  without its significance (and the geo-map in TellDataStory hatches the non-significant ones).
-  Every finding carries a MANDATORY caveats[] array. Optionally grounds correlation against a
-  research-derived hypothesis baseline (`--baseline FILE`), labelling each consistent / weaker /
-  absent / surprising. Dual output: durable `findings` rows (via fastlite) + a short human-readable
-  summary. USE WHEN analyse data, analyse dataset package, find correlations, find patterns,
-  fill findings table, correlation with caveats, analyse_data, stage 2, research baseline test,
-  deseasonalize correlation, lag correlation, trend, trend significance, Theil-Sen, Mann-Kendall,
-  significant trend, anomaly detection, descriptive facts. NOT FOR pulling/fetching raw data
-  (use FetchData), charts/dashboards/stories/maps (use TellDataStory / TellDataDashboard), or ingesting documents into the Library (use _TO_LIBRARY).
+description: "Find honest patterns in a SQLite dataset package and write them to its `findings` table — the SECOND stage of the modular data pipeline (FetchData -> AnalyseData -> TellDataStory). Reads the `data` + `meta` tables a `FetchData` package ships and fills the empty `findings` table. DOMAIN-AGNOSTIC by design: domain specifics are INPUTS, never baked in. Finding-types (default `correlation`): CORRELATION-with-caveats (deseasonalized, lag-scanned Pearson r + effective-N/Bonferroni-corrected p), ANOMALY (robust modified-z), TREND (Theil-Sen slope + Mann-Kendall significance, plausibility/`suspect` flag), and FACT. Every finding carries a MANDATORY caveats[] array. Dual output: durable `findings` rows + a short human-readable summary."
+when_to_use: "USE WHEN analyse data, analyse dataset package, find correlations, find patterns, fill findings table, correlation with caveats, analyse_data, stage 2, research baseline test, deseasonalize correlation, lag correlation, trend, trend significance, Theil-Sen, Mann-Kendall, significant trend, anomaly detection, descriptive facts. NOT FOR pulling/fetching raw data (use FetchData), charts/dashboards/stories/maps (use TellDataStory / TellDataDashboard), or ingesting documents into the Library (use _TO_LIBRARY)."
+metadata:
+  model: sonnet
 ---
 
 # AnalyseData
