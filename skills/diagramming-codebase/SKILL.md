@@ -1,7 +1,8 @@
 ---
 name: DiagrammingCodebase
-model: sonnet
 description: "Explores a Python codebase and creates Mermaid architecture and data model diagrams with prose documentation. Use when asked to diagram, map, visualize, or document a codebase's structure, architecture, or data model."
+metadata:
+  model: sonnet
 ---
 
 # Codebase Diagramming
