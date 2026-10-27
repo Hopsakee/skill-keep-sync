@@ -15,6 +15,12 @@ class Settings:
 
 def load_settings() -> Settings:
     load_dotenv()
+    storage_secret = os.getenv("STORAGE_SECRET")
+    if not storage_secret:
+        raise RuntimeError(
+            "STORAGE_SECRET is not set. Set it in your .env / deployment env, "
+            "e.g. STORAGE_SECRET=$(openssl rand -hex 32)"
+        )
     return Settings(
         title=os.getenv("APP_TITLE", "{{PROJECT_TITLE}}"),
         host=os.getenv("APP_HOST", "0.0.0.0"),
@@ -23,5 +29,5 @@ def load_settings() -> Settings:
         # Signs the per-user storage cookie. MUST be a real random value in
         # production â set STORAGE_SECRET in your .env / deployment env, e.g.
         #   STORAGE_SECRET=$(openssl rand -hex 32)
-        storage_secret=os.getenv("STORAGE_SECRET", "change-me-in-production"),
+        storage_secret=storage_secret,
     )
